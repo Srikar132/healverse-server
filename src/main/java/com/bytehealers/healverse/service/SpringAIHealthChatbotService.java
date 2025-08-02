@@ -23,6 +23,7 @@ public class SpringAIHealthChatbotService implements HealthChatbotService {
     
     private final OpenAiChatModel openAiChatModel;
     private final RetryTemplate aiRetryTemplate;
+    private final HealthDataService healthDataService;
     
     // In-memory session storage (would be replaced with database in production)
     private final Map<String, LocalDateTime> activeSessions = new ConcurrentHashMap<>();
@@ -172,9 +173,86 @@ public class SpringAIHealthChatbotService implements HealthChatbotService {
             prompt.append("Conversation Context: ").append(request.getConversationContext()).append("\n\n");
         }
         
-        prompt.append("Please provide a helpful, safe, and informative response.");
+        // Add relevant health data if available
+        String enhancedPrompt = enhancePromptWithHealthData(request.getQuery(), prompt.toString());
+        
+        prompt = new StringBuilder(enhancedPrompt);
+        prompt.append("\nPlease provide a helpful, safe, and informative response.");
         
         return prompt.toString();
+    }
+    
+    private String enhancePromptWithHealthData(String query, String originalPrompt) {
+        StringBuilder enhanced = new StringBuilder(originalPrompt);
+        
+        // Check if the query is asking about specific symptoms, medications, or health topics
+        String lowerQuery = query.toLowerCase();
+        
+        if (containsSymptomKeywords(lowerQuery)) {
+            String symptomInfo = extractAndLookupSymptom(lowerQuery);
+            if (symptomInfo != null) {
+                enhanced.append("Relevant symptom information: ").append(symptomInfo).append("\n\n");
+            }
+        }
+        
+        if (containsMedicationKeywords(lowerQuery)) {
+            String medicationInfo = extractAndLookupMedication(lowerQuery);
+            if (medicationInfo != null) {
+                enhanced.append("Relevant medication information: ").append(medicationInfo).append("\n\n");
+            }
+        }
+        
+        if (containsHealthTipKeywords(lowerQuery)) {
+            String healthTips = extractAndLookupHealthTips(lowerQuery);
+            if (healthTips != null) {
+                enhanced.append("Relevant health tips: ").append(healthTips).append("\n\n");
+            }
+        }
+        
+        return enhanced.toString();
+    }
+    
+    private boolean containsSymptomKeywords(String query) {
+        return query.contains("headache") || query.contains("fever") || query.contains("cough") || 
+               query.contains("fatigue") || query.contains("tired") || query.contains("nausea") ||
+               query.contains("symptom");
+    }
+    
+    private boolean containsMedicationKeywords(String query) {
+        return query.contains("ibuprofen") || query.contains("acetaminophen") || query.contains("aspirin") ||
+               query.contains("medication") || query.contains("medicine") || query.contains("drug") ||
+               query.contains("tylenol") || query.contains("advil");
+    }
+    
+    private boolean containsHealthTipKeywords(String query) {
+        return query.contains("sleep") || query.contains("exercise") || query.contains("nutrition") ||
+               query.contains("stress") || query.contains("hydration") || query.contains("diet") ||
+               query.contains("tips") || query.contains("healthy");
+    }
+    
+    private String extractAndLookupSymptom(String query) {
+        if (query.contains("headache")) return healthDataService.getSymptomInfo("headache");
+        if (query.contains("fever")) return healthDataService.getSymptomInfo("fever");
+        if (query.contains("cough")) return healthDataService.getSymptomInfo("cough");
+        if (query.contains("fatigue") || query.contains("tired")) return healthDataService.getSymptomInfo("fatigue");
+        if (query.contains("nausea")) return healthDataService.getSymptomInfo("nausea");
+        return null;
+    }
+    
+    private String extractAndLookupMedication(String query) {
+        if (query.contains("ibuprofen") || query.contains("advil")) return healthDataService.getMedicationInfo("ibuprofen");
+        if (query.contains("acetaminophen") || query.contains("tylenol")) return healthDataService.getMedicationInfo("acetaminophen");
+        if (query.contains("aspirin")) return healthDataService.getMedicationInfo("aspirin");
+        return null;
+    }
+    
+    private String extractAndLookupHealthTips(String query) {
+        if (query.contains("sleep")) return healthDataService.getHealthTips("sleep");
+        if (query.contains("exercise")) return healthDataService.getHealthTips("exercise");
+        if (query.contains("nutrition") || query.contains("diet")) return healthDataService.getHealthTips("nutrition");
+        if (query.contains("stress")) return healthDataService.getHealthTips("stress");
+        if (query.contains("hydration")) return healthDataService.getHealthTips("hydration");
+        return healthDataService.getHealthTips("general");
     }
     
     private void storeConversationContext(String sessionId, String query, String response) {

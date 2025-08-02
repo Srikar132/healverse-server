@@ -25,6 +25,9 @@ class SpringAIHealthChatbotServiceTest {
     @Mock
     private RetryTemplate aiRetryTemplate;
 
+    @Mock
+    private HealthDataService healthDataService;
+
     @InjectMocks
     private SpringAIHealthChatbotService healthChatbotService;
 
