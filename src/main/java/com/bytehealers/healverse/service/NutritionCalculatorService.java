@@ -38,11 +38,11 @@ public class NutritionCalculatorService {
         BigDecimal tdee = calculateTDEE(profile);
 
         switch (profile.getGoal()) {
-            case WEIGHT_LOSS:
+            case LOSE_WEIGHT:
                 return applyWeightLossCalories(tdee, profile.getWeightLossSpeed());
-            case WEIGHT_GAIN:
+            case GAIN_WEIGHT:
                 return tdee.add(BigDecimal.valueOf(500)); // +500 calories for weight gain
-            case MUSCLE_GAIN:
+            case BUILD_MUSCLE:
                 return tdee.add(BigDecimal.valueOf(300)); // +300 calories for muscle gain
             default:
                 return tdee; // Maintain weight
@@ -73,13 +73,13 @@ public class NutritionCalculatorService {
 
     public MacroDistribution calculateMacros(BigDecimal targetCalories, Goal goal) {
         switch (goal) {
-            case WEIGHT_LOSS:
+            case LOSE_WEIGHT:
                 return new MacroDistribution(
                         targetCalories.multiply(BigDecimal.valueOf(0.35)).divide(BigDecimal.valueOf(4), 0, RoundingMode.HALF_UP), // Protein 35%
                         targetCalories.multiply(BigDecimal.valueOf(0.35)).divide(BigDecimal.valueOf(4), 0, RoundingMode.HALF_UP), // Carbs 35%
                         targetCalories.multiply(BigDecimal.valueOf(0.30)).divide(BigDecimal.valueOf(9), 0, RoundingMode.HALF_UP)  // Fat 30%
                 );
-            case MUSCLE_GAIN:
+            case BUILD_MUSCLE:
                 return new MacroDistribution(
                         targetCalories.multiply(BigDecimal.valueOf(0.30)).divide(BigDecimal.valueOf(4), 0, RoundingMode.HALF_UP), // Protein 30%
                         targetCalories.multiply(BigDecimal.valueOf(0.45)).divide(BigDecimal.valueOf(4), 0, RoundingMode.HALF_UP), // Carbs 45%

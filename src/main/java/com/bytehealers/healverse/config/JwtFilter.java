@@ -34,12 +34,14 @@ public class JwtFilter extends OncePerRequestFilter {
         final String authHeader = request.getHeader("Authorization");
         String username = null;
         String jwt = null;
+        Long userId = null;
 
         try {
             // Check if Authorization header exists and starts with "Bearer "
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 jwt = authHeader.substring(7);
                 username = jwtService.extractUsername(jwt);
+                userId = jwtService.extractUserId(jwt);
             }
 
             // If username is found and context is not already authenticated

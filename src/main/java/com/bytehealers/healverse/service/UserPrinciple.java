@@ -9,7 +9,8 @@ import java.util.Collection;
 import java.util.Collections;
 
 public class UserPrinciple implements UserDetails {
-    private User user;
+
+    private User user = null;
 
     public UserPrinciple(User user) {
         this.user = user;
@@ -19,6 +20,10 @@ public class UserPrinciple implements UserDetails {
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return Collections.singleton(new SimpleGrantedAuthority("USER"));
+    }
+
+    public Long getUserId() {
+        return user.getId();
     }
 
     @Override

@@ -1,5 +1,6 @@
 package com.bytehealers.healverse.repo;
 
+import com.bytehealers.healverse.model.User;
 import com.bytehealers.healverse.model.UserProfile;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -12,4 +13,5 @@ public interface UserProfileRepository extends JpaRepository<UserProfile, Long> 
 
     @Query("SELECT up FROM UserProfile up WHERE up.user.id = :userId")
     Optional<UserProfile> findByUserId(@Param("userId") Long userId);
+    Optional<UserProfile> findByUser(User user);
 }

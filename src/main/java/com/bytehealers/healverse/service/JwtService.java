@@ -1,5 +1,6 @@
 package com.bytehealers.healverse.service;
 
+import com.bytehealers.healverse.model.User;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
@@ -12,23 +13,25 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
-
 @Component
 public class JwtService {
 
     private static final String SECRET_KEY = "5mvVOFUyAqi2PexgueMrZnCXvzKW5J8PIafyOX6dSUY=";
 
-    public String generateJwtToken(String username) {
-        Map<String , Object> claims = new HashMap<>();
+    // ✅ Now takes both userId and username
+    public String generateJwtToken(User user) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("userId", user.getId());
 
         return Jwts.builder()
                 .setClaims(claims)
-                .setSubject(username)
+                .setSubject(user.getUsername())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24))
-                .signWith(getKey() , SignatureAlgorithm.HS256)
+                .signWith(getKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
+
 
     private Key getKey() {
         byte[] apiKeySecretBytes = Decoders.BASE64.decode(SECRET_KEY);
@@ -41,7 +44,20 @@ public class JwtService {
                 .build()
                 .parseClaimsJws(token)
                 .getBody()
-                .getSubject();
+                .getSubject(); // ✅ Still from subject
+    }
+
+
+
+    public Long extractUserId(String token) {
+        Object userIdObj = Jwts.parserBuilder()
+                .setSigningKey(getKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .get("userId");
+
+        return userIdObj != null ? Long.valueOf(userIdObj.toString()) : null;
     }
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
@@ -58,5 +74,4 @@ public class JwtService {
                 .getExpiration();
         return expiration.before(new Date());
     }
-
 }

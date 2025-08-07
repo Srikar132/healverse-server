@@ -4,14 +4,20 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
-@Table(name = "users")
+@Table(name = "users",indexes = {
+        @Index(name = "idx_users_username", columnList = "username", unique = true),
+        @Index(name = "idx_users_email", columnList = "email")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@ToString(exclude = {"conversations" , "exerciseLogs" , "summaries" , "waterLogs"})
 public class User {
 
     @Id
@@ -45,8 +51,22 @@ public class User {
     private LocalDateTime updatedAt;
 
 
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
     private UserProfile profile;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Conversation> conversations;
+
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<ExerciseLog> exerciseLogs;
+
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL , fetch = FetchType.LAZY)
+    private List<DailyNutritionSummary> summaries;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL , fetch = FetchType.LAZY)
+    private List<WaterLog> waterLogs;
 
     @PrePersist
     protected void onCreate() {

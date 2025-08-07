@@ -68,4 +68,33 @@ public class UserService {
     public Optional<User> findByGoogleId(String googleId) {
         return userRepository.findByGoogleId(googleId);
     }
+
+    public UserProfile getUserProfile(String username) {
+        Optional<User> user = userRepository.findByUsername(username);
+        if (user.isPresent()) {
+            return user.get().getProfile();
+        } else {
+            return null;
+        }
+    }
+
+    public UserProfile createUserProfile(String username, @Valid UserProfileDTO profileDTO) {
+        Optional<User> user = userRepository.findByUsername(username);
+        if (user.isPresent()) {
+            UserProfile profile = new UserProfile();
+            profile.setUser(user.get());
+            profile.setGender(profileDTO.getGender());
+            profile.setAge(profileDTO.getAge());
+            profile.setHeightCm(profileDTO.getHeightCm());
+            profile.setCurrentWeightKg(profileDTO.getCurrentWeightKg());
+            profile.setActivityLevel(profileDTO.getActivityLevel());
+            profile.setGoal(profileDTO.getGoal());
+
+            user.get().setProfile(profile);
+
+            return userProfileService.createProfile(profile);
+        }
+
+        return null;
+    }
 }
