@@ -1,5 +1,6 @@
 package com.bytehealers.healverse.controller;
 
+import com.bytehealers.healverse.dto.response.ApiResponse;
 import com.bytehealers.healverse.exception.ResourceNotFoundException;
 import com.bytehealers.healverse.model.User;
 import com.bytehealers.healverse.model.UserProfile;
@@ -28,18 +29,26 @@ public class AuthController {
     private final JwtService jwtService;
 
     @PostMapping("/register")
-    public ResponseEntity<Map<String, Object>> register(@RequestBody @Valid RegisterRequest request) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> register(
+            @RequestBody @Valid RegisterRequest request) {
+
         User registeredUser = userService.registerUser(request.getUser(), request.getProfile());
         String token = jwtService.generateJwtToken(registeredUser);
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("token", token);
-        response.put("user", createUserResponse(registeredUser));
-        return ResponseEntity.ok(response);
+        Map<String, Object> responseData = new HashMap<>();
+        responseData.put("token", token);
+        responseData.put("user", createUserResponse(registeredUser));
+
+        ApiResponse<Map<String, Object>> apiResponse = ApiResponse.success(
+                "User registered successfully",
+                responseData
+        );
+
+        return ResponseEntity.ok(apiResponse);
     }
 
     @PostMapping("/login")
-    public ResponseEntity<Map<String, Object>> login(@RequestBody @Valid LoginRequest request) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> login(@RequestBody @Valid LoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
         );
@@ -49,14 +58,15 @@ public class AuthController {
 
         String token = jwtService.generateJwtToken(user);
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("token", token);
-        response.put("user", createUserResponse(user));
-        return ResponseEntity.ok(response);
+        Map<String, Object> responseData = new HashMap<>();
+        responseData.put("token", token);
+        responseData.put("user", createUserResponse(user));
+
+        return ResponseEntity.ok(ApiResponse.success("Login successful", responseData));
     }
 
     @GetMapping("/check-auth")
-    public ResponseEntity<Map<String, Object>> checkAuth(@RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> checkAuth(@RequestHeader("Authorization") String authHeader) {
         String token = authHeader.replace("Bearer ", "");
         String username = jwtService.extractUsername(token);
 
@@ -65,10 +75,11 @@ public class AuthController {
 
         String newToken = jwtService.generateJwtToken(user);
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("token", newToken);
-        response.put("user", createUserResponse(user));
-        return ResponseEntity.ok(response);
+        Map<String, Object> responseData = new HashMap<>();
+        responseData.put("token", newToken);
+        responseData.put("user", createUserResponse(user));
+
+        return ResponseEntity.ok(ApiResponse.success("Auth check successful", responseData));
     }
 
     private Map<String, Object> createUserResponse(User user) {
@@ -76,9 +87,13 @@ public class AuthController {
         userMap.put("id", user.getId());
         userMap.put("username", user.getUsername());
         userMap.put("email", user.getEmail());
-        // Add more fields if needed
+        userMap.put("createdAt", user.getCreatedAt());
+        userMap.put("updatedAt", user.getUpdatedAt());
+        userMap.put("googleId", user.getGoogleId());
+        userMap.put("profile", user.getProfile());
         return userMap;
     }
+
 
     @Setter
     @Getter

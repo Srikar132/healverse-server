@@ -46,6 +46,7 @@
 
                 // Calculate nutritional requirements
                 BigDecimal targetCalories = nutritionCalculator.calculateTargetCalories(profile);
+
                 NutritionCalculatorService.MacroDistribution macros =
                         nutritionCalculator.calculateMacros(targetCalories, profile.getGoal());
 

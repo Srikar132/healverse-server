@@ -29,16 +29,16 @@ public class DailyNutritionSummary {
     private LocalDate date;
 
     @Column(name = "target_calories", nullable = false, precision = 6, scale = 2)
-    private BigDecimal targetCalories = new BigDecimal("2000");
+    private BigDecimal targetCalories = new BigDecimal("0");
 
     @Column(name = "target_protein", nullable = false, precision = 5, scale = 2)
-    private BigDecimal targetProtein = new BigDecimal("150");
+    private BigDecimal targetProtein = new BigDecimal("0");
 
     @Column(name = "target_carbs", nullable = false, precision = 5, scale = 2)
-    private BigDecimal targetCarbs = new BigDecimal("250");
+    private BigDecimal targetCarbs = new BigDecimal("0");
 
     @Column(name = "target_fat", nullable = false, precision = 5, scale = 2)
-    private BigDecimal targetFat = new BigDecimal("67");
+    private BigDecimal targetFat = new BigDecimal("0");
 
     @Column(name = "consumed_calories", precision = 6, scale = 2)
     private BigDecimal consumedCalories = new BigDecimal("0");
@@ -69,6 +69,12 @@ public class DailyNutritionSummary {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    public DailyNutritionSummary(User user, LocalDate date) {
+        this.user = user;
+        this.date = date;
+    }
+
 
     // === Business Logic ===
 

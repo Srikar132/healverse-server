@@ -35,4 +35,15 @@ public interface WaterLogRepository extends JpaRepository<WaterLog, Long> {
         LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX);
         return findByUserIdAndLoggedAtBetween(userId, startOfDay, endOfDay);
     }
+
+    @Query("SELECT w FROM WaterLog w " +
+            "WHERE w.user.id = :userId " +
+            "AND CAST(w.loggedAt AS date) = :date " +
+            "ORDER BY w.loggedAt DESC")
+    List<WaterLog> findWaterLogsByDate(
+            @Param("userId") Long userId,
+            @Param("date") LocalDate date
+    );
+
+
 }

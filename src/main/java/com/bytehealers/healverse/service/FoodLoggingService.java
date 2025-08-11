@@ -12,11 +12,12 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.MimeTypeUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -29,6 +30,9 @@ public class FoodLoggingService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private NutritionSyncService  nutritionSyncService;
 
     @Autowired
     private ChatClient chatClient;
@@ -99,24 +103,61 @@ public class FoodLoggingService {
 
     public FoodLogResponse logFoodByImage(Long userId, MultipartFile image, FoodLogRequest request) {
         try {
-            String aiResponse = chatClient.prompt()
-                    .user(userSpec -> userSpec
-                            .text(IMAGE_ANALYSIS_PROMPT)
-                            .media(MimeTypeUtils.IMAGE_JPEG , image.getResource()) )
-                    .call()
-                    .content();
+            // For now, skip AI/image processing
+        /*
+        String aiResponse = chatClient.prompt()
+                .user(userSpec -> userSpec
+                        .text(IMAGE_ANALYSIS_PROMPT)
+                        .media(MimeTypeUtils.IMAGE_JPEG, image.getResource()))
+                .call()
+                .content();
 
-            AIFoodResponse aiFoodResponse = objectMapper.readValue(aiResponse, AIFoodResponse.class);
+        AIFoodResponse aiFoodResponse = objectMapper.readValue(aiResponse, AIFoodResponse.class);
 
-            // Here you would typically upload the image to a storage service and get the URL
-            String imageUrl = uploadImageToStorage(image); // Implement this method
+        String imageUrl = uploadImageToStorage(image);
+        */
 
-            return createFoodLog(userId, request, aiFoodResponse, true, imageUrl, aiFoodResponse.getDescription());
+            // --- Fake AI Response ---
+            AIFoodResponse aiFoodResponse = new AIFoodResponse();
+            aiFoodResponse.setMealName("Dummy Chicken Salad");
+            aiFoodResponse.setDescription("A test description for fake chicken salad.");
 
+            List<AIFoodResponse.AIFoodItem> items = new ArrayList<>();
+
+            AIFoodResponse.AIFoodItem item1 = new AIFoodResponse.AIFoodItem();
+            item1.setName("Chicken Breast");
+            item1.setQuantity(150);
+            item1.setUnit("g");
+            item1.setCalories(165);
+            item1.setProtein(31);
+            item1.setFat(3.6);
+            item1.setCarbs(0);
+            items.add(item1);
+
+            AIFoodResponse.AIFoodItem item2 = new AIFoodResponse.AIFoodItem();
+            item2.setName("Lettuce");
+            item2.setQuantity(50);
+            item2.setUnit("g");
+            item2.setCalories(8);
+            item2.setProtein(0.5);
+            item2.setFat(0.1);
+            item2.setCarbs(1.6);
+            items.add(item2);
+
+            aiFoodResponse.setItems(items);
+
+            String imageUrl = "https://example.com/fake-image.jpg"; // Fake placeholder URL
+
+            FoodLogResponse res = createFoodLog(userId, request, aiFoodResponse, true, imageUrl, aiFoodResponse.getDescription());
+
+            nutritionSyncService.syncAfterFoodLogAsync(userId , res.getLoggedAt());
+
+            return res;
         } catch (Exception e) {
-            throw new RuntimeException("Failed to analyze food image: " + e.getMessage());
+            throw new RuntimeException("Failed to create fake food log: " + e.getMessage());
         }
     }
+
 
     private FoodLogResponse createFoodLog(Long userId, FoodLogRequest request, AIFoodResponse aiFoodResponse,
                                           boolean isFromCamera, String imageUrl, String imageDescription) {
@@ -164,6 +205,17 @@ public class FoodLoggingService {
                 .collect(Collectors.toList());
     }
 
+    public List<FoodLogResponse> getFoodLogsByDate(Long userId , LocalDate date) {
+        LocalDateTime startOfDay = date.atStartOfDay();
+        LocalDateTime endOfDay = startOfDay.plusDays(1);
+        List<FoodLog> foodLogs = foodLogRepository.findTodaysFoodLogsByUserId(userId, startOfDay, endOfDay);
+        return foodLogs.stream()
+                .map(this::convertToResponse)
+                .collect(Collectors.toList());
+    }
+
+
+
     public List<FoodLogResponse> getAllFoodLogs(Long userId) {
         List<FoodLog> foodLogs = foodLogRepository.findByUserIdOrderByLoggedAtDesc(userId);
         return foodLogs.stream()
@@ -200,7 +252,7 @@ public class FoodLoggingService {
         return convertToResponse(savedFoodLog);
     }
 
-    public void deleteFoodLog(Long userId, Long foodLogId) {
+    public boolean deleteFoodLog(Long userId, Long foodLogId) {
         FoodLog foodLog = foodLogRepository.findById(foodLogId)
                 .orElseThrow(() -> new RuntimeException("Food log not found"));
 
@@ -209,6 +261,7 @@ public class FoodLoggingService {
         }
 
         foodLogRepository.delete(foodLog);
+        return true;
     }
 
     private FoodLogResponse convertToResponse(FoodLog foodLog) {
@@ -247,4 +300,12 @@ public class FoodLoggingService {
         // For now, returning a placeholder
         return "https://your-storage-service.com/images/" + System.currentTimeMillis() + "_" + image.getOriginalFilename();
     }
+
+    public List<FoodLog> getFoodLogsByDateRange(Long userId, LocalDate fromDate, LocalDate toDate) {
+        LocalDateTime startOfDay = fromDate.atStartOfDay(); // 2025-08-07T00:00:00
+        LocalDateTime endOfDay = toDate.atTime(LocalTime.MAX); // 2025-08-07T23:59:59.999999999
+
+        return foodLogRepository.findFoodLogsByUserIdAndDateRange(userId, startOfDay, endOfDay);
+    }
+
 }

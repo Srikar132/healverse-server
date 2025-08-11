@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDate;
 import java.time.DayOfWeek;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.math.BigDecimal;
@@ -36,30 +37,39 @@ public class DietPlanService {
     @Autowired
     private MealRepository mealRepository;
 
-    public DietPlan generateDailyPlan(String username, LocalDate date) {
+    public DietPlan generateDailyPlan(Long userId, LocalDate date) {
         try {
             // Check if plan already exists
-            Optional<DietPlan> existingPlan = dietPlanRepository.findByUser_UsernameAndPlanDate(username, date);
+            Optional<DietPlan> existingPlan = dietPlanRepository.findByUserIdAndPlanDate(userId, date);
             if (existingPlan.isPresent()) {
-                log.info("Returning existing diet plan for user: {} on date: {}", username, date);
+                log.info("Returning existing diet plan for user: {} on date: {}", userId, date);
                 return existingPlan.get();
             }
 
+            // if plan not exits , only generate if date is >= today's datae , other wise return null object
+            if (date.isBefore(LocalDate.now())) {
+                log.warn("Cannot generate diet plan for past date: {} (today is {})", date, LocalDate.now());
+                return null;
+            }
+
             // Get user with profile
-            User user = userRepository.findByUsername(username)
+            User user = userRepository.findById(userId)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
             UserProfile profile = user.getProfile();
+
             if (profile == null) {
                 profile = userProfileRepository.findByUser(user)
                         .orElseThrow(() -> new RuntimeException("User profile not found"));
                 user.setProfile(profile);
             }
 
-            log.info("Generating daily diet plan for user: {} on date: {}", username, date);
+            log.info("Generating daily diet plan for user: {} on date: {}", userId, date);
 
             // Generate complete diet plan using AI service
-            DietPlan aiGeneratedPlan = aiRecommendationService.generateDietPlan(user);
+//            DietPlan aiGeneratedPlan = aiRecommendationService.generateDietPlan(user);
+
+            DietPlan aiGeneratedPlan = getDummyDietPlan(user);
 
             // Update the plan with the specific date
             aiGeneratedPlan.setPlanDate(date);
@@ -77,24 +87,24 @@ public class DietPlanService {
             }
 
             log.info("Successfully generated and saved diet plan with {} meals for user: {} on date: {}",
-                    aiGeneratedPlan.getMeals().size(), username, date);
+                    aiGeneratedPlan.getMeals().size(), userId, date);
 
             return savedPlan;
 
         } catch (Exception e) {
-            log.error("Failed to generate daily diet plan for user: {} on date: {}", username, date, e);
+            log.error("Failed to generate daily diet plan for user: {} on date: {}", userId, date, e);
             throw new RuntimeException("Failed to generate daily diet plan: " + e.getMessage(), e);
         }
     }
 
-    public List<DietPlan> getWeeklyPlans(String username, LocalDate date) {
+    public List<DietPlan> getWeeklyPlans(Long userId, LocalDate date) {
         try {
             LocalDate startOfWeek = date.with(DayOfWeek.MONDAY);
             LocalDate endOfWeek = startOfWeek.plusDays(6);
 
-            log.info("Getting weekly diet plans for user: {} from {} to {}", username, startOfWeek, endOfWeek);
+            log.info("Getting weekly diet plans for user: {} from {} to {}", userId, startOfWeek, endOfWeek);
 
-            List<DietPlan> existingPlans = dietPlanRepository.findWeeklyPlansByUsernameAndDateRange(username, startOfWeek, endOfWeek);
+            List<DietPlan> existingPlans = dietPlanRepository.findWeeklyPlansByUserIdAndDateRange(userId, startOfWeek, endOfWeek);
 
             // Generate missing plans for the week
             for (LocalDate currentDate = startOfWeek; !currentDate.isAfter(endOfWeek); currentDate = currentDate.plusDays(1)) {
@@ -104,11 +114,12 @@ public class DietPlanService {
 
                 if (!planExists) {
                     try {
-                        DietPlan newPlan = generateDailyPlan(username, currentDate);
+                        DietPlan newPlan = generateDailyPlan(userId, currentDate);
                         existingPlans.add(newPlan);
                     } catch (Exception e) {
-                        log.warn("Failed to generate diet plan for date: {} for user: {}", currentDate, username, e);
+                        log.warn("Failed to generate diet plan for date: {} for user: {}", currentDate, userId, e);
                         // Continue with other dates even if one fails
+
                     }
                 }
             }
@@ -117,27 +128,27 @@ public class DietPlanService {
                     .sorted((p1, p2) -> p1.getPlanDate().compareTo(p2.getPlanDate()))
                     .toList();
 
-            log.info("Retrieved {} diet plans for weekly view for user: {}", sortedPlans.size(), username);
+            log.info("Retrieved {} diet plans for weekly view for user: {}", sortedPlans.size(), userId);
             return sortedPlans;
 
         } catch (Exception e) {
-            log.error("Failed to get weekly diet plans for user: {}", username, e);
+            log.error("Failed to get weekly diet plans for user: {}", userId, e);
             throw new RuntimeException("Failed to get weekly diet plans: " + e.getMessage(), e);
         }
     }
 
-    public DietPlan getDailyPlan(String username, LocalDate date) {
+    public DietPlan getDailyPlan(Long userId, LocalDate date) {
         try {
-            log.info("Getting daily diet plan for user: {} on date: {}", username, date);
+            log.info("Getting daily diet plan for user: {} on date: {}", userId, date);
 
-            return dietPlanRepository.findByUser_UsernameAndPlanDate(username, date)
+            return dietPlanRepository.findByUserIdAndPlanDate(userId, date)
                     .orElseGet(() -> {
-                        log.info("No existing plan found, generating new plan for user: {} on date: {}", username, date);
-                        return generateDailyPlan(username, date);
+                        log.info("No existing plan found, generating new plan for user: {} on date: {}", userId, date);
+                        return generateDailyPlan(userId, date);
                     });
 
         } catch (Exception e) {
-            log.error("Failed to get daily diet plan for user: {} on date: {}", username, date, e);
+            log.error("Failed to get daily diet plan for user: {} on date: {}", userId, date, e);
             throw new RuntimeException("Failed to get daily diet plan: " + e.getMessage(), e);
         }
     }
@@ -145,11 +156,11 @@ public class DietPlanService {
     /**
      * Generate a single meal for a specific meal type
      */
-    public Meal generateSingleMeal(String username, MealType mealType, BigDecimal targetCalories) {
+    public Meal generateSingleMeal(Long userId, MealType mealType, BigDecimal targetCalories) {
         try {
-            log.info("Generating single {} meal for user: {}", mealType, username);
+            log.info("Generating single {} meal for user: {}", mealType, userId);
 
-            User user = userRepository.findByUsername(username)
+            User user = userRepository.findById(userId)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
             UserProfile profile = user.getProfile();
@@ -161,7 +172,7 @@ public class DietPlanService {
             return aiRecommendationService.generateSingleMeal(profile, mealType, targetCalories);
 
         } catch (Exception e) {
-            log.error("Failed to generate single meal for user: {}", username, e);
+            log.error("Failed to generate single meal for user: {}", userId, e);
             throw new RuntimeException("Failed to generate single meal: " + e.getMessage(), e);
         }
     }
@@ -180,7 +191,7 @@ public class DietPlanService {
             BigDecimal mealCalories = calculateMealCalories(dietPlan.getTotalCalories(), mealType);
 
             // Generate new meal
-            Meal newMeal = generateSingleMeal(dietPlan.getUser().getUsername(), mealType, mealCalories);
+            Meal newMeal = generateSingleMeal(dietPlan.getUser().getId(), mealType, mealCalories);
 
             // Replace the existing meal
             List<Meal> meals = dietPlan.getMeals();
@@ -297,31 +308,31 @@ public class DietPlanService {
     /**
      * Get user's current diet plan (today's plan)
      */
-    public DietPlan getCurrentDietPlan(String username) {
-        return getDailyPlan(username, LocalDate.now());
+    public DietPlan getCurrentDietPlan(Long userId) {
+        return getDailyPlan(userId, LocalDate.now());
     }
 
     /**
      * Check if user has a diet plan for a specific date
      */
-    public boolean hasDietPlan(String username, LocalDate date) {
-        return dietPlanRepository.findByUser_UsernameAndPlanDate(username, date).isPresent();
+    public boolean hasDietPlan(Long userId, LocalDate date) {
+        return dietPlanRepository.findByUserIdAndPlanDate(userId, date).isPresent();
     }
 
     /**
      * Delete a diet plan for a specific date
      */
-    public void deleteDietPlan(String username, LocalDate date) {
+    public void deleteDietPlan(Long userId, LocalDate date) {
         try {
-            Optional<DietPlan> dietPlan = dietPlanRepository.findByUser_UsernameAndPlanDate(username, date);
+            Optional<DietPlan> dietPlan = dietPlanRepository.findByUserIdAndPlanDate(userId, date);
             if (dietPlan.isPresent()) {
                 dietPlanRepository.delete(dietPlan.get());
-                log.info("Deleted diet plan for user: {} on date: {}", username, date);
+                log.info("Deleted diet plan for user: {} on date: {}", userId, date);
             } else {
-                log.warn("No diet plan found to delete for user: {} on date: {}", username, date);
+                log.warn("No diet plan found to delete for user: {} on date: {}", userId, date);
             }
         } catch (Exception e) {
-            log.error("Failed to delete diet plan for user: {} on date: {}", username, date, e);
+            log.error("Failed to delete diet plan for user: {} on date: {}", userId, date, e);
             throw new RuntimeException("Failed to delete diet plan: " + e.getMessage(), e);
         }
     }
@@ -329,13 +340,63 @@ public class DietPlanService {
     /**
      * Get all diet plans for a user within a date range
      */
-    public List<DietPlan> getDietPlansByDateRange(String username, LocalDate startDate, LocalDate endDate) {
+    public List<DietPlan> getDietPlansByDateRange(Long userId, LocalDate startDate, LocalDate endDate) {
         try {
-            log.info("Getting diet plans for user: {} from {} to {}", username, startDate, endDate);
-            return dietPlanRepository.findWeeklyPlansByUsernameAndDateRange(username, startDate, endDate);
+            log.info("Getting diet plans for user: {} from {} to {}", userId, startDate, endDate);
+            return dietPlanRepository.findWeeklyPlansByUserIdAndDateRange(userId, startDate, endDate);
         } catch (Exception e) {
-            log.error("Failed to get diet plans by date range for user: {}", username, e);
+            log.error("Failed to get diet plans by date range for user: {}", userId, e);
             throw new RuntimeException("Failed to get diet plans by date range: " + e.getMessage(), e);
         }
     }
+
+
+    // DUMMY DATA
+    public DietPlan getDummyDietPlan(User user) {
+        // Create dummy meals
+        Meal breakfast = new Meal();
+        breakfast.setMealType(MealType.BREAKFAST);
+        breakfast.setMealName("Oats with Banana");
+        breakfast.setCalories(new BigDecimal("350.00"));
+        breakfast.setProtein(new BigDecimal("10.00"));
+        breakfast.setCarbs(new BigDecimal("60.00"));
+        breakfast.setFat(new BigDecimal("5.00"));
+        breakfast.setPreparationTimeMinutes(10);
+        breakfast.setInstructions("Mix oats with milk and top with sliced banana.");
+        breakfast.setHealthBenefits("Provides energy and improves digestion.");
+        breakfast.setCreatedAt(LocalDateTime.now());
+        breakfast.setIngredients(List.of("Oats", "Milk", "Banana", "Honey"));
+
+        Meal lunch = new Meal();
+        lunch.setMealType(MealType.LUNCH);
+        lunch.setMealName("Grilled Chicken with Rice");
+        lunch.setCalories(new BigDecimal("600.00"));
+        lunch.setProtein(new BigDecimal("45.00"));
+        lunch.setCarbs(new BigDecimal("50.00"));
+        lunch.setFat(new BigDecimal("15.00"));
+        lunch.setPreparationTimeMinutes(30);
+        lunch.setInstructions("Grill the chicken and serve with boiled rice.");
+        lunch.setHealthBenefits("High protein meal for muscle recovery.");
+        lunch.setCreatedAt(LocalDateTime.now());
+        lunch.setIngredients(List.of("Chicken", "Rice", "Spices", "Olive Oil"));
+
+        // Create DietPlan
+        DietPlan dietPlan = new DietPlan();
+        dietPlan.setUser(user);
+        dietPlan.setPlanDate(LocalDate.now());
+        dietPlan.setTotalCalories(new BigDecimal("950.00"));
+        dietPlan.setTotalProtein(new BigDecimal("55.00"));
+        dietPlan.setTotalCarbs(new BigDecimal("110.00"));
+        dietPlan.setTotalFat(new BigDecimal("20.00"));
+        dietPlan.setIsGenerated(true);
+        dietPlan.setCreatedAt(LocalDateTime.now());
+
+        // Link meals to the diet plan
+        breakfast.setDietPlan(dietPlan);
+        lunch.setDietPlan(dietPlan);
+        dietPlan.setMeals(List.of(breakfast, lunch));
+
+        return dietPlan;
+    }
+
 }

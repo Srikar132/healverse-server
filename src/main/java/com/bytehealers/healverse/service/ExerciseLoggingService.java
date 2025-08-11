@@ -70,6 +70,14 @@ public class ExerciseLoggingService {
         return exerciseLogRepository.findTodaysExerciseLogs(user.getId());
     }
 
+    public List<ExerciseLog> getExerciseLogsByDate(Long userId, LocalDate date) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        return exerciseLogRepository.findExerciseLogsByDate(user.getId(), date);
+    }
+
+
     public List<ExerciseLog> getExerciseLogsByDateRange(Long userId, LocalDate startDate, LocalDate endDate) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));

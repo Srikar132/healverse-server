@@ -2,6 +2,7 @@ package com.bytehealers.healverse.controller;
 
 import com.bytehealers.healverse.dto.request.LogExerciseRequest;
 import com.bytehealers.healverse.dto.response.ApiResponse;
+import com.bytehealers.healverse.dto.response.DashboardResponse;
 import com.bytehealers.healverse.model.ExerciseIntensity;
 import com.bytehealers.healverse.model.ExerciseLog;
 import com.bytehealers.healverse.service.CalorieCalculatorService;
@@ -20,6 +21,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/exercise-logs")
+@CrossOrigin(origins = "*")
 public class ExerciseLoggingController {
 
     @Autowired
@@ -49,7 +51,26 @@ public class ExerciseLoggingController {
             List<ExerciseLog> exerciseLogs = exerciseLoggingService.getTodaysExerciseLogs(userId);
             return ResponseEntity.ok(ApiResponse.success("Today's exercise logs retrieved successfully", exerciseLogs));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to retrieve exercise logs: " + e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to retrieve today's exercise logs: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{date}")
+    public ResponseEntity<ApiResponse<List<ExerciseLog>>> getExerciseByDate(
+            @PathVariable @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate date
+    ) {
+        try {
+            Long userId = userContext.getCurrentUserId();
+
+            List<ExerciseLog> exerciseLogs = exerciseLoggingService.getExerciseLogsByDate(userId , date);
+
+            return ResponseEntity.ok(ApiResponse.success(
+                    "Exercise retrieved successfully",
+                    exerciseLogs
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body(ApiResponse.error("Failed to retrieve dashboard: " + e.getMessage()));
         }
     }
 
@@ -87,7 +108,7 @@ public class ExerciseLoggingController {
             if (deleted) {
                 return ResponseEntity.ok(ApiResponse.success("Exercise log deleted successfully", "Deleted"));
             } else {
-                return ResponseEntity.notFound().build();
+                return ResponseEntity.status(404).body(ApiResponse.error("Exercise log not found"));
             }
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error("Failed to delete exercise log: " + e.getMessage()));

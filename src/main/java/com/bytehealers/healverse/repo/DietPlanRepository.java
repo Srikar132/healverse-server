@@ -26,4 +26,14 @@ public interface DietPlanRepository extends JpaRepository<DietPlan, Long> {
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
     );
+
+
+    Optional<DietPlan> findByUserIdAndPlanDate(Long userId, LocalDate date);
+
+    @Query("SELECT dp FROM DietPlan dp WHERE dp.user.id = :userId AND dp.planDate BETWEEN :startDate AND :endDate ORDER BY dp.planDate")
+    List<DietPlan> findWeeklyPlansByUserIdAndDateRange(
+        @Param("userId") Long userId,
+        @Param("startDate") LocalDate startDate,
+        @Param("endDate") LocalDate endDate
+    );
 }

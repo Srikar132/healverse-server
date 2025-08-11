@@ -78,8 +78,8 @@ public class UserService {
         }
     }
 
-    public UserProfile createUserProfile(String username, @Valid UserProfileDTO profileDTO) {
-        Optional<User> user = userRepository.findByUsername(username);
+    public UserProfile createUserProfile(Long userId, @Valid UserProfileDTO profileDTO) {
+        Optional<User> user = userRepository.findById(userId);
         if (user.isPresent()) {
             UserProfile profile = new UserProfile();
             profile.setUser(user.get());
@@ -96,5 +96,19 @@ public class UserService {
         }
 
         return null;
+    }
+
+    public User findById(Long userId) {
+        return  userRepository.findById(userId).orElse(null);
+    }
+
+    public UserProfile updateUserProfile(Long userId, @Valid UserProfileDTO profileDTO) {
+//        return userProfileRepository.save()
+
+        return null;
+    }
+
+    public UserProfile getUserProfileById(Long userId) {
+        return userProfileRepository.findById(userId).orElse(null);
     }
 }

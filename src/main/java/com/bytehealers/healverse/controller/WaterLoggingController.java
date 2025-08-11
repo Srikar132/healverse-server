@@ -59,6 +59,19 @@ public class WaterLoggingController {
         }
     }
 
+    @GetMapping("/{date}")
+    public ResponseEntity<ApiResponse<List<WaterLog>>> getWaterLogsByDate(
+            @PathVariable @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate date
+    ) {
+        try {
+            Long userId = userContext.getCurrentUserId();
+            List<WaterLog> waterLogs = waterLoggingService.getWaterLogsByDate(userId, date);
+            return ResponseEntity.ok(ApiResponse.success("Today's water logs retrieved successfully", waterLogs));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to retrieve water logs: " + e.getMessage()));
+        }
+    }
+
     @GetMapping("/today/total")
     public ResponseEntity<ApiResponse<BigDecimal>> getTotalWaterIntakeToday() {
         try {

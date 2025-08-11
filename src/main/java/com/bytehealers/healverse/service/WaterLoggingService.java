@@ -7,6 +7,7 @@ import com.bytehealers.healverse.model.WaterLog;
 import com.bytehealers.healverse.repo.UserRepository;
 import com.bytehealers.healverse.repo.WaterLogRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cglib.core.Local;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -68,6 +69,10 @@ public class WaterLoggingService {
 
     public List<WaterLog> getTodaysWaterLogs(Long userId) {
         return waterLogRepository.findTodaysWaterLogs(userId);
+    }
+
+    public List<WaterLog> getWaterLogsByDate(Long userId, LocalDate date) {
+        return waterLogRepository.findWaterLogsByDate(userId, date);
     }
 
     public BigDecimal getTotalWaterIntakeToday(Long userId) {

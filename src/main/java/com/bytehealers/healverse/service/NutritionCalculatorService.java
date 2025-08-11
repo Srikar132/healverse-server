@@ -45,7 +45,7 @@ public class NutritionCalculatorService {
             case BUILD_MUSCLE:
                 return tdee.add(BigDecimal.valueOf(300)); // +300 calories for muscle gain
             default:
-                return tdee; // Maintain weight
+                return tdee;
         }
     }
 

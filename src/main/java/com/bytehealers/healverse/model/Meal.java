@@ -1,9 +1,12 @@
 package com.bytehealers.healverse.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import lombok.ToString;
+
 import java.time.LocalDateTime;
 import java.math.BigDecimal;
 import java.util.List;
@@ -14,6 +17,7 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@ToString(exclude = "dietPlan")
 public class Meal {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -21,6 +25,7 @@ public class Meal {
 
     @ManyToOne
     @JoinColumn(name = "diet_plan_id", nullable = false)
+    @JsonIgnore
     private DietPlan dietPlan;
 
     @Enumerated(EnumType.STRING)

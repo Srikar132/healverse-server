@@ -7,10 +7,15 @@ import com.bytehealers.healverse.repo.ConversationRepository;
 import com.bytehealers.healverse.repo.MessageRepository;
 import com.bytehealers.healverse.repo.UserProfileRepository;
 import com.bytehealers.healverse.repo.UserRepository;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.prompt.PromptTemplate;
+import org.springframework.ai.chat.messages.SystemMessage;
+import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.Message;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,9 +23,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -34,52 +38,46 @@ public class ChatService {
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
 
+    // Configuration
+    @Value("${chat.history.max-messages:6}")
+    private int maxHistoryMessages;
+
+    @Value("${chat.context.max-tokens:2000}")
+    private int maxContextTokens;
+
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
+
+    // Cached system prompt template
+    private String systemPromptTemplate;
+
+    // Cache for user contexts to avoid repeated DB calls
+    private final Map<Long, UserContextCache> userContextCache = new ConcurrentHashMap<>();
+
+    // Cache TTL (5 minutes)
+    private static final long CACHE_TTL = 5 * 60 * 1000;
+
+    @PostConstruct
+    public void init() {
+        loadSystemPrompt();
+    }
 
     @Transactional
     public MessageResponse sendMessage(String conversationId, Long userId, SendMessageRequest request) {
         // Get or create conversation
         Conversation conversation = getOrCreateConversation(conversationId, userId);
 
-
         // Save user message
-        Message userMessage = new Message();
+        com.bytehealers.healverse.model.Message userMessage = new com.bytehealers.healverse.model.Message();
         userMessage.setConversation(conversation);
         userMessage.setContent(request.getContent());
         userMessage.setRole(MessageRole.USER);
         messageRepository.save(userMessage);
 
-        // Generate bot response with user context
-//        String botResponse = generateBotResponse(conversation, userId, request.getContent());
-        String botResponse =
-                "# 🌟 Daily Motivation 🌟\n" +
-                        "\n" +
-                        "## Keep Going 💪\n" +
-                        "You're doing *amazing*! Don't forget to **take breaks**, stay **hydrated** 💧, and keep your _goals_ in sight!\n" +
-                        "\n" +
-                        "---\n" +
-                        "### ✅ Here are a few tips to stay on track:\n" +
-                        "- 📅 **Plan** your tasks for the day\n" +
-                        "- 🍎 Eat **healthy snacks** to stay energized\n" +
-                        "- 🧘‍♂️ Try short **meditation** or **stretching** sessions\n" +
-                        "- 🎧 Listen to music to stay in the _zone_\n" +
-                        "\n" +
-                        "> *“Success is the sum of small efforts repeated day in and day out.”* – Robert Collier\n" +
-                        "\n" +
-                        "```javascript\n" +
-                        "// Small progress every day\n" +
-                        "let success = consistency + belief + hardWork;\n" +
-                        "```\n" +
-                        "\n" +
-                        "👉 Learn more tips [here](https://www.healthline.com/health/mental-health-tips)\n" +
-                        "\n" +
-                        "---\n" +
-                        "**You’ve got this!** 🌈✨";
-
-
+        // Generate bot response with optimized context
+        String botResponse = generateBotResponse(conversation, userId, request.getContent());
 
         // Save bot message
-        Message botMessage = new Message();
+        com.bytehealers.healverse.model.Message botMessage = new com.bytehealers.healverse.model.Message();
         botMessage.setConversation(conversation);
         botMessage.setContent(botResponse);
         botMessage.setRole(MessageRole.BOT);
@@ -100,7 +98,9 @@ public class ChatService {
             throw new RuntimeException("Conversation not found or access denied");
         }
 
-        List<Message> messages = messageRepository.findByConversationIdOrderByCreatedAtAsc(conversationId);
+        List<com.bytehealers.healverse.model.Message> messages =
+                messageRepository.findByConversationIdOrderByCreatedAtAsc(conversationId);
+
         return messages.stream()
                 .map(this::mapToMessageResponse)
                 .collect(Collectors.toList());
@@ -122,27 +122,11 @@ public class ChatService {
 
     private String generateBotResponse(Conversation conversation, Long userId, String userMessage) {
         try {
-            // Load system prompt template
-            String systemPromptTemplate = loadSystemPrompt();
-
-            // Get user context
-            String userContext = buildUserContext(userId);
-
-            // Get conversation history
-            String conversationHistory = buildConversationHistory(conversation);
-
-            // Prepare prompt variables
-            Map<String, Object> promptVariables = new HashMap<>();
-            promptVariables.put("userContext", userContext);
-            promptVariables.put("conversationHistory", conversationHistory);
-            promptVariables.put("currentMessage", userMessage);
-
-            // Create and execute prompt
-            PromptTemplate promptTemplate = new PromptTemplate(systemPromptTemplate);
-            String finalPrompt = promptTemplate.render(promptVariables);
+            // Build optimized message chain
+            List<Message> messages = buildOptimizedMessageChain(conversation, userId, userMessage);
 
             return chatClient.prompt()
-                    .user(finalPrompt)
+                    .messages(messages)
                     .call()
                     .content();
 
@@ -152,76 +136,122 @@ public class ChatService {
         }
     }
 
-    private String loadSystemPrompt() {
-        try {
-            ClassPathResource resource = new ClassPathResource("prompts/system-prompt-for-assistant.txt");
-            return resource.getContentAsString(StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            log.error("Error loading system prompt", e);
-            return getDefaultSystemPrompt();
+    private List<Message> buildOptimizedMessageChain(Conversation conversation, Long userId, String currentMessage) {
+        List<Message> messages = new ArrayList<>();
+
+        // 1. System message with user context
+        String userContext = getCachedUserContext(userId);
+        String systemPrompt = systemPromptTemplate.replace("{userContext}", userContext);
+        messages.add(new SystemMessage(systemPrompt));
+
+        // 2. Recent conversation history (optimized)
+        List<Message> historyMessages = buildOptimizedHistory(conversation);
+        messages.addAll(historyMessages);
+
+        // 3. Current user message
+        messages.add(new UserMessage(currentMessage));
+
+        return messages;
+    }
+
+    private List<Message> buildOptimizedHistory(Conversation conversation) {
+        List<com.bytehealers.healverse.model.Message> recentMessages =
+                messageRepository.findTopNByConversationIdOrderByCreatedAtDesc(
+                        conversation.getId(), maxHistoryMessages);
+
+        // Reverse to get chronological order
+        Collections.reverse(recentMessages);
+
+        List<Message> historyMessages = new ArrayList<>();
+        int tokenCount = 0;
+
+        for (com.bytehealers.healverse.model.Message msg : recentMessages) {
+            // Estimate tokens (rough approximation: 1 token ≈ 4 characters)
+            int messageTokens = msg.getContent().length() / 4;
+
+            if (tokenCount + messageTokens > maxContextTokens) {
+                break; // Stop if we exceed token limit
+            }
+
+            // Create appropriate message type
+            if (msg.getRole() == MessageRole.USER) {
+                historyMessages.add(new UserMessage(msg.getContent()));
+            } else {
+                historyMessages.add(new AssistantMessage(msg.getContent()));
+            }
+
+            tokenCount += messageTokens;
         }
+
+        return historyMessages;
+    }
+
+    private String getCachedUserContext(Long userId) {
+        UserContextCache cached = userContextCache.get(userId);
+        long currentTime = System.currentTimeMillis();
+
+        // Check if cache is valid
+        if (cached != null && (currentTime - cached.timestamp) < CACHE_TTL) {
+            return cached.context;
+        }
+
+        // Build fresh context
+        String context = buildUserContext(userId);
+        userContextCache.put(userId, new UserContextCache(context, currentTime));
+
+        return context;
     }
 
     private String buildUserContext(Long userId) {
-        UserProfile profile = userProfileRepository.findByUserId(userId)
-                .orElse(null);
+        UserProfile profile = userProfileRepository.findByUserId(userId).orElse(null);
 
         if (profile == null) {
-            return "User profile not available. Please ask the user to complete their profile for personalized advice.";
+            return "User profile not available. Request profile completion for personalized Ayurvedic guidance.";
         }
 
-        StringBuilder context = new StringBuilder();
-        context.append("User Profile Information:\n");
-        context.append("- Gender: ").append(profile.getGender()).append("\n");
-        context.append("- Age: ").append(profile.getAge()).append(" years\n");
-        context.append("- Height: ").append(profile.getHeightCm()).append(" cm\n");
-        context.append("- Current Weight: ").append(profile.getCurrentWeightKg()).append(" kg\n");
-        context.append("- Target Weight: ").append(profile.getTargetWeightKg()).append(" kg\n");
-        context.append("- Activity Level: ").append(profile.getActivityLevel().getDescription()).append("\n");
-        context.append("- Goal: ").append(profile.getGoal().getDescription()).append("\n");
+        // Handle potential null values and convert BigDecimal to proper format
+        String gender = profile.getGender() != null ? profile.getGender().toString() : "Unknown";
+        Integer age = profile.getAge() != null ? profile.getAge() : 0;
+        String height = profile.getHeightCm() != null ? profile.getHeightCm().toString() : "0";
+        String currentWeight = profile.getCurrentWeightKg() != null ? profile.getCurrentWeightKg().toString() : "0";
+        String targetWeight = profile.getTargetWeightKg() != null ? profile.getTargetWeightKg().toString() : "0";
+        String activityLevel = profile.getActivityLevel() != null ? profile.getActivityLevel().getDescription() : "Unknown";
+        String goal = profile.getGoal() != null ? profile.getGoal().getDescription() : "Unknown";
+        String weightLossSpeed = profile.getWeightLossSpeed() != null ?
+                " (" + profile.getWeightLossSpeed().getDescription() + ")" : "";
+        String dietaryRestriction = profile.getDietaryRestriction() != null ?
+                profile.getDietaryRestriction().getDescription() : "None";
+        String healthCondition = profile.getHealthCondition() != null ?
+                profile.getHealthCondition().getDescription() : "None";
+        String otherHealth = profile.getOtherHealthConditionDescription() != null ?
+                " + " + profile.getOtherHealthConditionDescription() : "";
 
-        if (profile.getWeightLossSpeed() != null) {
-            context.append("- Weight Loss Speed: ").append(profile.getWeightLossSpeed().getDescription()).append("\n");
-        }
-
-        context.append("- Dietary Restriction: ").append(profile.getDietaryRestriction().getDescription()).append("\n");
-        context.append("- Health Condition: ").append(profile.getHealthCondition().getDescription()).append("\n");
-
-        if (profile.getOtherHealthConditionDescription() != null) {
-            context.append("- Other Health Details: ").append(profile.getOtherHealthConditionDescription()).append("\n");
-        }
-
-        return context.toString();
+        // Compact format optimized for Ayurvedic context
+        return String.format("""
+            Profile: %s, %d yrs | %scm, %skg→%skg | %s | %s%s | Diet: %s | Health: %s%s
+            """,
+                gender, age, height, currentWeight, targetWeight,
+                activityLevel, goal, weightLossSpeed, dietaryRestriction, healthCondition, otherHealth
+        ).trim();
     }
 
-    private String buildConversationHistory(Conversation conversation) {
-        List<Message> recentMessages = messageRepository.findByConversationIdOrderByCreatedAtAsc(conversation.getId());
-
-        // Limit to last 10 messages to avoid token limits
-        List<Message> limitedMessages = recentMessages.stream()
-                .skip(Math.max(0, recentMessages.size() - 10))
-                .collect(Collectors.toList());
-
-        StringBuilder history = new StringBuilder();
-        history.append("Previous conversation context:\n");
-
-        for (Message message : limitedMessages) {
-            String role = message.getRole() == MessageRole.USER ? "User" : "Assistant";
-            history.append(role).append(": ").append(message.getContent()).append("\n");
+    private void loadSystemPrompt() {
+        try {
+            ClassPathResource resource = new ClassPathResource("prompts/system-prompt-for-assistant.txt");
+            this.systemPromptTemplate = resource.getContentAsString(StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            log.error("Error loading system prompt", e);
+            this.systemPromptTemplate = getDefaultSystemPrompt();
         }
-
-        return history.toString();
     }
 
     private String generateConversationTitle(String firstMessage) {
-        // Simple title generation - you can make this more sophisticated
         String title = firstMessage.length() > 50 ?
-                firstMessage.substring(0, 50) + "..." :
-                firstMessage;
+                firstMessage.substring(0, 50) + "..." : firstMessage;
         return title.replaceAll("[\\r\\n]+", " ").trim();
     }
 
-    private MessageResponse mapToMessageResponse(Message message) {
+    private MessageResponse mapToMessageResponse(com.bytehealers.healverse.model.Message message) {
         return new MessageResponse(
                 message.getId(),
                 message.getConversation().getId(),
@@ -245,17 +275,32 @@ public class ChatService {
             **User Context:**
             {userContext}
 
-            **Conversation History:**
-            {conversationHistory}
-
-            **Current User Message:**
-            {currentMessage}
-
-            Please provide a helpful, personalized response in Markdown format that addresses the user's question while considering their profile and conversation history.
+            Please provide helpful, personalized responses that address the user's questions while considering their profile and conversation history.
             """;
     }
 
     public List<Conversation> getAllConversations(Long userId) {
         return conversationRepository.findByUserIdOrderByUpdatedAtDesc(userId);
+    }
+
+    // Method to clear user cache when profile is updated
+    public void clearUserCache(Long userId) {
+        userContextCache.remove(userId);
+    }
+
+    // Method to clear all cache (for maintenance)
+    public void clearAllCache() {
+        userContextCache.clear();
+    }
+
+    // Inner class for caching user context
+    private static class UserContextCache {
+        final String context;
+        final long timestamp;
+
+        UserContextCache(String context, long timestamp) {
+            this.context = context;
+            this.timestamp = timestamp;
+        }
     }
 }
