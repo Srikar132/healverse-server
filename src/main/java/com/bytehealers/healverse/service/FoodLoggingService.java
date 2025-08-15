@@ -12,6 +12,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.MimeTypeUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
@@ -24,6 +25,9 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class FoodLoggingService {
+
+    // log factory
+
 
     @Autowired
     private FoodLogRepository foodLogRepository;
@@ -63,25 +67,27 @@ public class FoodLoggingService {
             """;
 
     private static final String IMAGE_ANALYSIS_PROMPT = """
-            Analyze the food in this image and provide detailed nutritional information.
-            Identify all food items visible and estimate their quantities and nutritional values.
-            Return the response in the following JSON format:
+    Analyze the food in this image and return a JSON response with the following exact structure.
+    Do not include any markdown formatting or code blocks - return only the raw JSON.
+    
+    {
+        "mealName": "Name of the overall meal/dish",
+        "description": "Brief description of the meal",
+        "items": [
             {
-                "mealName": "Brief meal name based on what you see",
-                "description": "Detailed description of the food in the image",
-                "items": [
-                    {
-                        "name": "food item name",
-                        "quantity": estimated_quantity_number,
-                        "unit": "g/ml/piece/cup etc",
-                        "calories": estimated_calories,
-                        "protein": protein_in_grams,
-                        "fat": fat_in_grams,
-                        "carbs": carbs_in_grams
-                    }
-                ]
+                "name": "Food item name",
+                "quantity": numeric_value,
+                "unit": "g or ml or piece",
+                "calories": numeric_value,
+                "protein": numeric_value,
+                "fat": numeric_value,
+                "carbs": numeric_value
             }
-            """;
+        ]
+    }
+    
+    Provide realistic nutritional values based on typical serving sizes. Return only the JSON, no other text.
+    """;
 
     public FoodLogResponse logFoodByDescription(Long userId, FoodLogRequest request) {
         try {
@@ -103,62 +109,54 @@ public class FoodLoggingService {
 
     public FoodLogResponse logFoodByImage(Long userId, MultipartFile image, FoodLogRequest request) {
         try {
-            // For now, skip AI/image processing
-        /*
-        String aiResponse = chatClient.prompt()
-                .user(userSpec -> userSpec
-                        .text(IMAGE_ANALYSIS_PROMPT)
-                        .media(MimeTypeUtils.IMAGE_JPEG, image.getResource()))
-                .call()
-                .content();
+            String aiResponse = chatClient.prompt()
+                    .user(userSpec -> userSpec
+                            .text(IMAGE_ANALYSIS_PROMPT)
+                            .media(MimeTypeUtils.IMAGE_JPEG, image.getResource()))
+                    .call()
+                    .content();
 
-        AIFoodResponse aiFoodResponse = objectMapper.readValue(aiResponse, AIFoodResponse.class);
+            // Log the raw response for debugging
+//            log.debug("Raw AI Response: {}", aiResponse);
 
-        String imageUrl = uploadImageToStorage(image);
-        */
+            System.out.println("New ai responce" + aiResponse);
 
-            // --- Fake AI Response ---
-            AIFoodResponse aiFoodResponse = new AIFoodResponse();
-            aiFoodResponse.setMealName("Dummy Chicken Salad");
-            aiFoodResponse.setDescription("A test description for fake chicken salad.");
+            // Clean the response - remove markdown code blocks if present
+            String cleanedResponse = cleanJsonResponse(aiResponse);
+//            log.debug("Cleaned AI Response: {}", cleanedResponse);
 
-            List<AIFoodResponse.AIFoodItem> items = new ArrayList<>();
+            System.out.println("Cleaned ai response" + cleanedResponse);
 
-            AIFoodResponse.AIFoodItem item1 = new AIFoodResponse.AIFoodItem();
-            item1.setName("Chicken Breast");
-            item1.setQuantity(150);
-            item1.setUnit("g");
-            item1.setCalories(165);
-            item1.setProtein(31);
-            item1.setFat(3.6);
-            item1.setCarbs(0);
-            items.add(item1);
+            AIFoodResponse aiFoodResponse = objectMapper.readValue(cleanedResponse, AIFoodResponse.class);
 
-            AIFoodResponse.AIFoodItem item2 = new AIFoodResponse.AIFoodItem();
-            item2.setName("Lettuce");
-            item2.setQuantity(50);
-            item2.setUnit("g");
-            item2.setCalories(8);
-            item2.setProtein(0.5);
-            item2.setFat(0.1);
-            item2.setCarbs(1.6);
-            items.add(item2);
-
-            aiFoodResponse.setItems(items);
-
-            String imageUrl = "https://example.com/fake-image.jpg"; // Fake placeholder URL
+            String imageUrl = "https://example.com/fake-image.jpg"; // Your actual image upload logic
 
             FoodLogResponse res = createFoodLog(userId, request, aiFoodResponse, true, imageUrl, aiFoodResponse.getDescription());
-
-            nutritionSyncService.syncAfterFoodLogAsync(userId , res.getLoggedAt());
+            nutritionSyncService.syncAfterFoodLogAsync(userId, res.getLoggedAt());
 
             return res;
         } catch (Exception e) {
-            throw new RuntimeException("Failed to create fake food log: " + e.getMessage());
+//            log.error("Failed to process food image", e);
+            throw new RuntimeException("Failed to create food log from image: " + e.getMessage(), e);
         }
     }
 
+    private String cleanJsonResponse(String response) {
+        if (response == null) return null;
 
+        // Remove markdown code blocks
+        response = response.trim();
+        if (response.startsWith("```json")) {
+            response = response.substring(7);
+        } else if (response.startsWith("```")) {
+            response = response.substring(3);
+        }
+        if (response.endsWith("```")) {
+            response = response.substring(0, response.length() - 3);
+        }
+
+        return response.trim();
+    }
     private FoodLogResponse createFoodLog(Long userId, FoodLogRequest request, AIFoodResponse aiFoodResponse,
                                           boolean isFromCamera, String imageUrl, String imageDescription) {
 

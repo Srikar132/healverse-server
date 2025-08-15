@@ -115,7 +115,6 @@ public class ChatService {
                     Conversation newConversation = new Conversation();
                     newConversation.setId(conversationId);
                     newConversation.setUser(user);
-                    newConversation.setTitle("New Chat");
                     return conversationRepository.save(newConversation);
                 });
     }

@@ -1,5 +1,6 @@
 package com.bytehealers.healverse.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -25,7 +26,7 @@ public class Meal {
 
     @ManyToOne
     @JoinColumn(name = "diet_plan_id", nullable = false)
-    @JsonIgnore
+    @JsonBackReference
     private DietPlan dietPlan;
 
     @Enumerated(EnumType.STRING)

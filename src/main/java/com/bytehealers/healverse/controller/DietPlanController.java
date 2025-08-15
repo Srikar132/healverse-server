@@ -137,88 +137,88 @@ public class DietPlanController {
         }
     }
 
-    @GetMapping("/weekly/current")
-    public ResponseEntity<ApiResponse<List<DietPlan>>> getCurrentWeeklyPlans() {
-        try {
-            Long userId = userContext.getCurrentUserId();
-            List<DietPlan> weeklyPlans = dietPlanService.getWeeklyPlans(userId, LocalDate.now());
-            return ResponseEntity.ok(ApiResponse.success("Current weekly plans retrieved successfully", weeklyPlans));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to get current weekly plans: " + e.getMessage()));
-        }
-    }
+//    @GetMapping("/weekly/current")
+//    public ResponseEntity<ApiResponse<List<DietPlan>>> getCurrentWeeklyPlans() {
+//        try {
+//            Long userId = userContext.getCurrentUserId();
+//            List<DietPlan> weeklyPlans = dietPlanService.getWeeklyPlans(userId, LocalDate.now());
+//            return ResponseEntity.ok(ApiResponse.success("Current weekly plans retrieved successfully", weeklyPlans));
+//        } catch (Exception e) {
+//            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to get current weekly plans: " + e.getMessage()));
+//        }
+//    }
 
-    @PostMapping("/weekly/generate")
-    public ResponseEntity<ApiResponse<List<DietPlan>>> generateCurrentWeeklyPlans() {
-        try {
-            Long userId = userContext.getCurrentUserId();
-            List<DietPlan> weeklyPlans = dietPlanService.getWeeklyPlans(userId, LocalDate.now());
-            return ResponseEntity.ok(ApiResponse.success("Current weekly plans generated successfully", weeklyPlans));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to generate weekly plans: " + e.getMessage()));
-        }
-    }
+//    @PostMapping("/weekly/generate")
+//    public ResponseEntity<ApiResponse<List<DietPlan>>> generateCurrentWeeklyPlans() {
+//        try {
+//            Long userId = userContext.getCurrentUserId();
+//            List<DietPlan> weeklyPlans = dietPlanService.getWeeklyPlans(userId, LocalDate.now());
+//            return ResponseEntity.ok(ApiResponse.success("Current weekly plans generated successfully", weeklyPlans));
+//        } catch (Exception e) {
+//            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to generate weekly plans: " + e.getMessage()));
+//        }
+//    }
 
-    @GetMapping("/weekly/next")
-    public ResponseEntity<ApiResponse<List<DietPlan>>> getNextWeeklyPlans() {
-        try {
-            Long userId = userContext.getCurrentUserId();
-            LocalDate nextWeek = LocalDate.now().plusWeeks(1);
-            List<DietPlan> weeklyPlans = dietPlanService.getWeeklyPlans(userId, nextWeek);
-            return ResponseEntity.ok(ApiResponse.success("Next week's plans retrieved successfully", weeklyPlans));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to get next week's plans: " + e.getMessage()));
-        }
-    }
+//    @GetMapping("/weekly/next")
+//    public ResponseEntity<ApiResponse<List<DietPlan>>> getNextWeeklyPlans() {
+//        try {
+//            Long userId = userContext.getCurrentUserId();
+//            LocalDate nextWeek = LocalDate.now().plusWeeks(1);
+//            List<DietPlan> weeklyPlans = dietPlanService.getWeeklyPlans(userId, nextWeek);
+//            return ResponseEntity.ok(ApiResponse.success("Next week's plans retrieved successfully", weeklyPlans));
+//        } catch (Exception e) {
+//            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to get next week's plans: " + e.getMessage()));
+//        }
+//    }
 
-    @GetMapping("/weekly/previous")
-    public ResponseEntity<ApiResponse<List<DietPlan>>> getPreviousWeeklyPlans() {
-        try {
-            Long userId = userContext.getCurrentUserId();
-            LocalDate previousWeek = LocalDate.now().minusWeeks(1);
-            List<DietPlan> weeklyPlans = dietPlanService.getWeeklyPlans(userId, previousWeek);
-            return ResponseEntity.ok(ApiResponse.success("Previous week's plans retrieved successfully", weeklyPlans));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to get previous week's plans: " + e.getMessage()));
-        }
-    }
+//    @GetMapping("/weekly/previous")
+//    public ResponseEntity<ApiResponse<List<DietPlan>>> getPreviousWeeklyPlans() {
+//        try {
+//            Long userId = userContext.getCurrentUserId();
+//            LocalDate previousWeek = LocalDate.now().minusWeeks(1);
+//            List<DietPlan> weeklyPlans = dietPlanService.getWeeklyPlans(userId, previousWeek);
+//            return ResponseEntity.ok(ApiResponse.success("Previous week's plans retrieved successfully", weeklyPlans));
+//        } catch (Exception e) {
+//            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to get previous week's plans: " + e.getMessage()));
+//        }
+//    }
 
-    @PostMapping("/generate/range")
-    public ResponseEntity<ApiResponse<List<DietPlan>>> generateDietPlansForRange(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        try {
-            Long userId = userContext.getCurrentUserId();
-            List<DietPlan> plans = dietPlanService.getDietPlansByDateRange(userId, startDate, endDate);
-            return ResponseEntity.ok(ApiResponse.success("Plans for range generated/retrieved successfully", plans));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to generate plans for range: " + e.getMessage()));
-        }
-    }
+//    @PostMapping("/generate/range")
+//    public ResponseEntity<ApiResponse<List<DietPlan>>> generateDietPlansForRange(
+//            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+//            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+//        try {
+//            Long userId = userContext.getCurrentUserId();
+//            List<DietPlan> plans = dietPlanService.getDietPlansByDateRange(userId, startDate, endDate);
+//            return ResponseEntity.ok(ApiResponse.success("Plans for range generated/retrieved successfully", plans));
+//        } catch (Exception e) {
+//            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to generate plans for range: " + e.getMessage()));
+//        }
+//    }
 
-    @DeleteMapping("/delete/range")
-    public ResponseEntity<ApiResponse<Map<String, String>>> deleteDietPlansInRange(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        try {
-            Long userId = userContext.getCurrentUserId();
-            LocalDate currentDate = startDate;
-            int deletedCount = 0;
-            while (!currentDate.isAfter(endDate)) {
-                if (dietPlanService.hasDietPlan(userId, currentDate)) {
-                    dietPlanService.deleteDietPlan(userId, currentDate);
-                    deletedCount++;
-                }
-                currentDate = currentDate.plusDays(1);
-            }
-            return ResponseEntity.ok(ApiResponse.success(Map.of(
-                    "message", "Deleted " + deletedCount + " diet plans",
-                    "deletedCount", String.valueOf(deletedCount)
-            )));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to delete plans in range: " + e.getMessage()));
-        }
-    }
+//    @DeleteMapping("/delete/range")
+//    public ResponseEntity<ApiResponse<Map<String, String>>> deleteDietPlansInRange(
+//            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+//            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+//        try {
+//            Long userId = userContext.getCurrentUserId();
+//            LocalDate currentDate = startDate;
+//            int deletedCount = 0;
+//            while (!currentDate.isAfter(endDate)) {
+//                if (dietPlanService.hasDietPlan(userId, currentDate)) {
+//                    dietPlanService.deleteDietPlan(userId, currentDate);
+//                    deletedCount++;
+//                }
+//                currentDate = currentDate.plusDays(1);
+//            }
+//            return ResponseEntity.ok(ApiResponse.success(Map.of(
+//                    "message", "Deleted " + deletedCount + " diet plans",
+//                    "deletedCount", String.valueOf(deletedCount)
+//            )));
+//        } catch (Exception e) {
+//            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to delete plans in range: " + e.getMessage()));
+//        }
+//    }
 
     @GetMapping("/summary")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getDietPlanSummary() {
@@ -251,12 +251,12 @@ public class DietPlanController {
     public ResponseEntity<ApiResponse<DietPlan>> regenerateAllMeals(
             @PathVariable Long dietPlanId) {
         try {
-            DietPlan updatedPlan = dietPlanService.regenerateMeal(dietPlanId, MealType.BREAKFAST);
-            updatedPlan = dietPlanService.regenerateMeal(dietPlanId, MealType.LUNCH);
-            updatedPlan = dietPlanService.regenerateMeal(dietPlanId, MealType.DINNER);
+            DietPlan updatedPlan = dietPlanService.regenerateAllMeals(dietPlanId);
             return ResponseEntity.ok(ApiResponse.success("All meals regenerated successfully", updatedPlan));
         } catch (Exception e) {
+//            log.error("Failed to regenerate all meals for diet plan: {}", dietPlanId, e);
             return ResponseEntity.badRequest().body(ApiResponse.error("Failed to regenerate all meals: " + e.getMessage()));
         }
     }
+
 }

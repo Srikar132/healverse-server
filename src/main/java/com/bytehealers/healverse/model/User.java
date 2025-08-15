@@ -1,5 +1,6 @@
 package com.bytehealers.healverse.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -17,7 +18,7 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@ToString(exclude = {"conversations" , "exerciseLogs" , "summaries" , "waterLogs"})
+@ToString(exclude = {"conversations" , "exerciseLogs" , "summaries" , "waterLogs" , "medications" , "dietPlans"})
 public class User {
 
     @Id
@@ -55,18 +56,31 @@ public class User {
     private UserProfile profile;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<Conversation> conversations;
 
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<ExerciseLog> exerciseLogs;
 
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL , fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<DailyNutritionSummary> summaries;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL , fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<WaterLog> waterLogs;
+
+
+    @OneToMany(fetch = FetchType.LAZY , mappedBy = "user" , cascade = CascadeType.ALL)
+    @JsonIgnore
+    private List<Medication> medications;
+
+    @OneToMany(fetch = FetchType.LAZY ,   mappedBy = "user" , cascade = CascadeType.ALL)
+    @JsonIgnore
+    private List<DietPlan> dietPlans;
 
     @PrePersist
     protected void onCreate() {

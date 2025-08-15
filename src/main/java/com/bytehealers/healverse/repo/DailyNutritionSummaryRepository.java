@@ -32,4 +32,37 @@ public interface DailyNutritionSummaryRepository extends JpaRepository<DailyNutr
     default Optional<DailyNutritionSummary> findTodaysSummaryAlternative(Long userId) {
         return findByUserIdAndDate(userId, LocalDate.now());
     }
+
+
+
+    /**
+     * Find nutrition summaries for a user within a date range
+     */
+    @Query("SELECT dns FROM DailyNutritionSummary dns WHERE dns.user.id = :userId AND dns.date BETWEEN :startDate AND :endDate ORDER BY dns.date ASC")
+    List<DailyNutritionSummary> findByUserIdAndDateBetween(@Param("userId") Long userId,
+                                                           @Param("startDate") LocalDate startDate,
+                                                           @Param("endDate") LocalDate endDate);
+
+    /**
+     * Find the most recent nutrition summary for a user
+     */
+    @Query("SELECT dns FROM DailyNutritionSummary dns WHERE dns.user.id = :userId ORDER BY dns.date DESC LIMIT 1")
+    Optional<DailyNutritionSummary> findMostRecentByUserId(@Param("userId") Long userId);
+
+    /**
+     * Find all summaries where user exceeded calorie targets
+     */
+    @Query("SELECT dns FROM DailyNutritionSummary dns WHERE dns.user.id = :userId AND dns.consumedCalories > dns.targetCalories AND dns.date BETWEEN :startDate AND :endDate")
+    List<DailyNutritionSummary> findCalorieExcessDays(@Param("userId") Long userId,
+                                                      @Param("startDate") LocalDate startDate,
+                                                      @Param("endDate") LocalDate endDate);
+
+    /**
+     * Get weekly average consumption for a user
+     */
+    @Query("SELECT AVG(dns.consumedCalories), AVG(dns.consumedProtein), AVG(dns.consumedCarbs), AVG(dns.consumedFat) " +
+            "FROM DailyNutritionSummary dns WHERE dns.user.id = :userId AND dns.date BETWEEN :startDate AND :endDate")
+    Object[] getWeeklyAverages(@Param("userId") Long userId,
+                               @Param("startDate") LocalDate startDate,
+                               @Param("endDate") LocalDate endDate);
 }
