@@ -48,4 +48,5 @@ public class DailyHealthData {
     private String activityLevel;
     private String healthConditions;
     private String dietaryRestrictions;
+    private String address;
 }

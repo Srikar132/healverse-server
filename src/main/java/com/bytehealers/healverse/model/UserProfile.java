@@ -50,6 +50,9 @@ public class UserProfile {
     @Column(nullable = false)
     private Goal goal;
 
+    @Column(name = "address")
+    private String address;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "weight_loss_speed")
     private WeightLossSpeed weightLossSpeed = WeightLossSpeed.MODERATE;

@@ -1,6 +1,10 @@
 package com.bytehealers.healverse.repo;
 
 import com.bytehealers.healverse.model.User;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -13,5 +17,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByGoogleId(String googleId);
     boolean existsByUsername(String username);
     boolean existsByEmail(String email);
+
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT u FROM User u WHERE u.id = :userId")
+    Optional<User> findByIdWithLock(@Param("userId") Long userId);
 
 }

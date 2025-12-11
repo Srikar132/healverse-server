@@ -37,124 +37,124 @@ public class DietPlanService {
     @Autowired
     private DailyNutritionSummaryRepository dailyNutritionSummaryRepository;
 
-    public DietPlan generateDailyPlanWithHistory(Long userId, LocalDate date) {
-        try {
-            // Check if plan already exists
-            Optional<DietPlan> existingPlan = dietPlanRepository.findByUserIdAndPlanDate(userId, date);
-            if (existingPlan.isPresent()) {
-                log.info("Returning existing diet plan for user: {} on date: {}", userId, date);
-                return existingPlan.get();
-            }
-
-            // Get user with profile
-            User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
-
-            UserProfile profile = user.getProfile();
-            if (profile == null) {
-                profile = userProfileRepository.findByUser(user)
-                        .orElseThrow(() -> new RuntimeException("User profile not found"));
-                user.setProfile(profile);
-            }
-
-            log.info("Generating daily diet plan with historical data for user: {} on date: {}", userId, date);
-
-            // Get historical nutrition data (last 7 days)
-            LocalDate startDate = date.minusDays(7);
-            List<DailyNutritionSummary> historicalData = dailyNutritionSummaryRepository
-                    .findByUserIdAndDateBetween(userId, startDate, date.minusDays(1));
-
-            // Get yesterday's data specifically
-            Optional<DailyNutritionSummary> yesterdayData = dailyNutritionSummaryRepository
-                    .findByUserIdAndDate(userId, date.minusDays(1));
-
-            // Generate enhanced diet plan using AI service with historical context
-            DietPlan aiGeneratedPlan = aiRecommendationService.generateDietPlanWithHistory(
-                    user, historicalData, yesterdayData.orElse(null));
-
-            // Update the plan with the specific date
-            aiGeneratedPlan.setPlanDate(date);
-            aiGeneratedPlan.setUser(user);
-
-            // Save the diet plan
-            DietPlan savedPlan = dietPlanRepository.save(aiGeneratedPlan);
-
-            // Save meals with proper diet plan reference
-            if (aiGeneratedPlan.getMeals() != null) {
-                for (Meal meal : aiGeneratedPlan.getMeals()) {
-                    meal.setDietPlan(savedPlan);
-                    mealRepository.save(meal);
-                }
-            }
-
-            log.info("Successfully generated and saved diet plan with {} meals considering historical data for user: {} on date: {}",
-                    aiGeneratedPlan.getMeals().size(), userId, date);
-
-            return savedPlan;
-
-        } catch (Exception e) {
-            log.error("Failed to generate daily diet plan with history for user: {} on date: {}", userId, date, e);
-            throw new RuntimeException("Failed to generate daily diet plan: " + e.getMessage(), e);
-        }
-    }
+//    public DietPlan generateDailyPlanWithHistory(Long userId, LocalDate date) {
+//        try {
+//            // Check if plan already exists
+//            Optional<DietPlan> existingPlan = dietPlanRepository.findByUserIdAndPlanDate(userId, date);
+//            if (existingPlan.isPresent()) {
+//                log.info("Returning existing diet plan for user: {} on date: {}", userId, date);
+//                return existingPlan.get();
+//            }
+//
+//            // Get user with profile
+//            User user = userRepository.findById(userId)
+//                    .orElseThrow(() -> new RuntimeException("User not found"));
+//
+//            UserProfile profile = user.getProfile();
+//            if (profile == null) {
+//                profile = userProfileRepository.findByUser(user)
+//                        .orElseThrow(() -> new RuntimeException("User profile not found"));
+//                user.setProfile(profile);
+//            }
+//
+//            log.info("Generating daily diet plan with historical data for user: {} on date: {}", userId, date);
+//
+//            // Get historical nutrition data (last 7 days)
+//            LocalDate startDate = date.minusDays(7);
+//            List<DailyNutritionSummary> historicalData = dailyNutritionSummaryRepository
+//                    .findByUserIdAndDateBetween(userId, startDate, date.minusDays(1));
+//
+//            // Get yesterday's data specifically
+//            Optional<DailyNutritionSummary> yesterdayData = dailyNutritionSummaryRepository
+//                    .findByUserIdAndDate(userId, date.minusDays(1));
+//
+//            // Generate enhanced diet plan using AI service with historical context
+//            DietPlan aiGeneratedPlan = aiRecommendationService.generateDietPlanWithHistory(
+//                    user, historicalData, yesterdayData.orElse(null));
+//
+//            // Update the plan with the specific date
+//            aiGeneratedPlan.setPlanDate(date);
+//            aiGeneratedPlan.setUser(user);
+//
+//            // Save the diet plan
+//            DietPlan savedPlan = dietPlanRepository.save(aiGeneratedPlan);
+//
+//            // Save meals with proper diet plan reference
+//            if (aiGeneratedPlan.getMeals() != null) {
+//                for (Meal meal : aiGeneratedPlan.getMeals()) {
+//                    meal.setDietPlan(savedPlan);
+//                    mealRepository.save(meal);
+//                }
+//            }
+//
+//            log.info("Successfully generated and saved diet plan with {} meals considering historical data for user: {} on date: {}",
+//                    aiGeneratedPlan.getMeals().size(), userId, date);
+//
+//            return savedPlan;
+//
+//        } catch (Exception e) {
+//            log.error("Failed to generate daily diet plan with history for user: {} on date: {}", userId, date, e);
+//            throw new RuntimeException("Failed to generate daily diet plan: " + e.getMessage(), e);
+//        }
+//    }
 
     /**
      * Generate nutritional adjustment context based on historical data
      */
-    public String generateNutritionalContext(List<DailyNutritionSummary> historicalData,
-                                             DailyNutritionSummary yesterdayData) {
-        StringBuilder context = new StringBuilder();
-
-        if (yesterdayData != null) {
-            context.append("Yesterday's Performance:\n");
-
-            // Check if user exceeded targets
-            if (yesterdayData.getConsumedCalories().compareTo(yesterdayData.getTargetCalories()) > 0) {
-                BigDecimal excess = yesterdayData.getConsumedCalories().subtract(yesterdayData.getTargetCalories());
-                context.append(String.format("- EXCEEDED calorie target by %.0f kcal (consumed: %.0f, target: %.0f)\n",
-                        excess, yesterdayData.getConsumedCalories(), yesterdayData.getTargetCalories()));
-            }
-
-            if (yesterdayData.getConsumedProtein().compareTo(yesterdayData.getTargetProtein()) > 0) {
-                BigDecimal excess = yesterdayData.getConsumedProtein().subtract(yesterdayData.getTargetProtein());
-                context.append(String.format("- EXCEEDED protein target by %.1f g\n", excess));
-            }
-
-            if (yesterdayData.getConsumedCarbs().compareTo(yesterdayData.getTargetCarbs()) > 0) {
-                BigDecimal excess = yesterdayData.getConsumedCarbs().subtract(yesterdayData.getTargetCarbs());
-                context.append(String.format("- EXCEEDED carbs target by %.1f g\n", excess));
-            }
-
-            if (yesterdayData.getConsumedFat().compareTo(yesterdayData.getTargetFat()) > 0) {
-                BigDecimal excess = yesterdayData.getConsumedFat().subtract(yesterdayData.getTargetFat());
-                context.append(String.format("- EXCEEDED fat target by %.1f g\n", excess));
-            }
-        }
-
-        if (!historicalData.isEmpty()) {
-            context.append("\nWeekly Trends:\n");
-
-            // Calculate weekly averages
-            BigDecimal avgCalorieExcess = historicalData.stream()
-                    .map(data -> data.getConsumedCalories().subtract(data.getTargetCalories()))
-                    .reduce(BigDecimal.ZERO, BigDecimal::add)
-                    .divide(BigDecimal.valueOf(historicalData.size()), 2, BigDecimal.ROUND_HALF_UP);
-
-            if (avgCalorieExcess.compareTo(BigDecimal.ZERO) > 0) {
-                context.append(String.format("- Average daily calorie excess: %.0f kcal\n", avgCalorieExcess));
-            }
-
-            // Count days exceeded targets
-            long daysExceededCalories = historicalData.stream()
-                    .mapToLong(data -> data.getConsumedCalories().compareTo(data.getTargetCalories()) > 0 ? 1 : 0)
-                    .sum();
-
-            context.append(String.format("- Days exceeded calorie target: %d out of %d\n",
-                    daysExceededCalories, historicalData.size()));
-        }
-
-        return context.toString();
-    }
+//    public String generateNutritionalContext(List<DailyNutritionSummary> historicalData,
+//                                             DailyNutritionSummary yesterdayData) {
+//        StringBuilder context = new StringBuilder();
+//
+//        if (yesterdayData != null) {
+//            context.append("Yesterday's Performance:\n");
+//
+//            // Check if user exceeded targets
+//            if (yesterdayData.getConsumedCalories().compareTo(yesterdayData.getTargetCalories()) > 0) {
+//                BigDecimal excess = yesterdayData.getConsumedCalories().subtract(yesterdayData.getTargetCalories());
+//                context.append(String.format("- EXCEEDED calorie target by %.0f kcal (consumed: %.0f, target: %.0f)\n",
+//                        excess, yesterdayData.getConsumedCalories(), yesterdayData.getTargetCalories()));
+//            }
+//
+//            if (yesterdayData.getConsumedProtein().compareTo(yesterdayData.getTargetProtein()) > 0) {
+//                BigDecimal excess = yesterdayData.getConsumedProtein().subtract(yesterdayData.getTargetProtein());
+//                context.append(String.format("- EXCEEDED protein target by %.1f g\n", excess));
+//            }
+//
+//            if (yesterdayData.getConsumedCarbs().compareTo(yesterdayData.getTargetCarbs()) > 0) {
+//                BigDecimal excess = yesterdayData.getConsumedCarbs().subtract(yesterdayData.getTargetCarbs());
+//                context.append(String.format("- EXCEEDED carbs target by %.1f g\n", excess));
+//            }
+//
+//            if (yesterdayData.getConsumedFat().compareTo(yesterdayData.getTargetFat()) > 0) {
+//                BigDecimal excess = yesterdayData.getConsumedFat().subtract(yesterdayData.getTargetFat());
+//                context.append(String.format("- EXCEEDED fat target by %.1f g\n", excess));
+//            }
+//        }
+//
+//        if (!historicalData.isEmpty()) {
+//            context.append("\nWeekly Trends:\n");
+//
+//            // Calculate weekly averages
+//            BigDecimal avgCalorieExcess = historicalData.stream()
+//                    .map(data -> data.getConsumedCalories().subtract(data.getTargetCalories()))
+//                    .reduce(BigDecimal.ZERO, BigDecimal::add)
+//                    .divide(BigDecimal.valueOf(historicalData.size()), 2, BigDecimal.ROUND_HALF_UP);
+//
+//            if (avgCalorieExcess.compareTo(BigDecimal.ZERO) > 0) {
+//                context.append(String.format("- Average daily calorie excess: %.0f kcal\n", avgCalorieExcess));
+//            }
+//
+//            // Count days exceeded targets
+//            long daysExceededCalories = historicalData.stream()
+//                    .mapToLong(data -> data.getConsumedCalories().compareTo(data.getTargetCalories()) > 0 ? 1 : 0)
+//                    .sum();
+//
+//            context.append(String.format("- Days exceeded calorie target: %d out of %d\n",
+//                    daysExceededCalories, historicalData.size()));
+//        }
+//
+//        return context.toString();
+//    }
 
     /**
      * Enhanced prompt that includes historical data context
@@ -288,29 +288,32 @@ public class DietPlanService {
 //    }
 
     // Placeholder methods - implement based on your business logic
-    private BigDecimal calculateTargetCalories(UserProfile profile) {
-        // Implement your calorie calculation logic
-        return new BigDecimal("2000");
-    }
+//    private BigDecimal calculateTargetCalories(UserProfile profile) {
+//        // Implement your calorie calculation logic
+//        return new BigDecimal("2000");
+//    }
+//
+//    private BigDecimal calculateProteinNeeds(UserProfile profile) {
+//        // Implement your protein calculation logic
+//        return new BigDecimal("150");
+//    }
+//
+//    private BigDecimal calculateCarbNeeds(UserProfile profile) {
+//        // Implement your carbs calculation logic
+//        return new BigDecimal("250");
+//    }
+//
+//    private BigDecimal calculateFatNeeds(UserProfile profile) {
+//        // Implement your fat calculation logic
+//        return new BigDecimal("65");
+//    }
 
-    private BigDecimal calculateProteinNeeds(UserProfile profile) {
-        // Implement your protein calculation logic
-        return new BigDecimal("150");
-    }
-
-    private BigDecimal calculateCarbNeeds(UserProfile profile) {
-        // Implement your carbs calculation logic
-        return new BigDecimal("250");
-    }
-
-    private BigDecimal calculateFatNeeds(UserProfile profile) {
-        // Implement your fat calculation logic
-        return new BigDecimal("65");
-    }
-
-
+    @Transactional
     public DietPlan generateDailyPlan(Long userId, LocalDate date) {
         try {
+
+            User user = userRepository.findByIdWithLock(userId)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
             // Check if plan already exists
             Optional<DietPlan> existingPlan = dietPlanRepository.findByUserIdAndPlanDate(userId, date);
             if (existingPlan.isPresent()) {
@@ -318,15 +321,11 @@ public class DietPlanService {
                 return existingPlan.get();
             }
 
-            // if plan not exits , only generate if date is >= today's datae , other wise return null object
+//             if plan not exits , only generate if date is >= today's datae , other wise return null object
 //            if (date.isBefore(LocalDate.now())) {
 //                log.warn("Cannot generate diet plan for past date: {} (today is {})", date, LocalDate.now());
 //                return null;
 //            }
-
-            // Get user with profile
-            User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
 
             UserProfile profile = user.getProfile();
 
@@ -409,6 +408,7 @@ public class DietPlanService {
         }
     }
 
+    @Transactional
     public DietPlan getDailyPlan(Long userId, LocalDate date) {
         try {
             log.info("Getting daily diet plan for user: {} on date: {}", userId, date);
@@ -428,6 +428,7 @@ public class DietPlanService {
     /**
      * Generate a single meal for a specific meal type
      */
+    @Transactional
     public Meal generateSingleMeal(Long userId, MealType mealType, BigDecimal targetCalories) {
         try {
             log.info("Generating single {} meal for user: {}", mealType, userId);
@@ -710,5 +711,9 @@ public class DietPlanService {
 
     public DietPlan getPlan(Long dietPlanId) {
         return dietPlanRepository.findById(dietPlanId).orElse(null);
+    }
+
+    public DietPlan getTodaysDietPlan(Long userId) {
+        return getDailyPlan(userId, LocalDate.now());
     }
 }

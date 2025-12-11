@@ -44,6 +44,10 @@ public class FoodLoggingService {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private GamificationService gamificationService;
+
+
     private static final String FOOD_ANALYSIS_PROMPT = """
             Analyze the following food description and provide detailed nutritional information.
             Return the response in the following JSON format:
@@ -133,6 +137,12 @@ public class FoodLoggingService {
 
             FoodLogResponse res = createFoodLog(userId, request, aiFoodResponse, true, imageUrl, aiFoodResponse.getDescription());
             nutritionSyncService.syncAfterFoodLogAsync(userId, res.getLoggedAt());
+
+            FoodLog savedLog = foodLogRepository.findById(res.getId())
+                    .orElseThrow(ClassNotFoundException::new);
+
+//            gamificationService.recordFoodLog(userId, savedLog);
+
 
             return res;
         } catch (Exception e) {

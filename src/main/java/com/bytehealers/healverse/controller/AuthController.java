@@ -4,6 +4,7 @@ import com.bytehealers.healverse.dto.response.ApiResponse;
 import com.bytehealers.healverse.exception.ResourceNotFoundException;
 import com.bytehealers.healverse.model.User;
 import com.bytehealers.healverse.model.UserProfile;
+import com.bytehealers.healverse.service.GamificationService;
 import com.bytehealers.healverse.service.JwtService;
 import com.bytehealers.healverse.service.UserService;
 import jakarta.validation.Valid;
@@ -27,6 +28,8 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final UserService userService;
     private final JwtService jwtService;
+    private final GamificationService gamificationService;
+
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<Map<String, Object>>> register(
@@ -34,6 +37,8 @@ public class AuthController {
 
         User registeredUser = userService.registerUser(request.getUser(), request.getProfile());
         String token = jwtService.generateJwtToken(registeredUser);
+
+        gamificationService.recordDailyLogin(registeredUser.getId());
 
         Map<String, Object> responseData = new HashMap<>();
         responseData.put("token", token);
@@ -57,6 +62,9 @@ public class AuthController {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         String token = jwtService.generateJwtToken(user);
+
+        gamificationService.recordDailyLogin(user.getId());
+
 
         Map<String, Object> responseData = new HashMap<>();
         responseData.put("token", token);
@@ -110,6 +118,5 @@ public class AuthController {
         // Getters and setters
         private String username;
         private String password;
-
     }
 }

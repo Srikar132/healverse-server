@@ -39,4 +39,6 @@ public class MedicationStatsController {
         List<TodayMedicationResponse> medications = analyticsService.getTodayMedications(userId);
         return ResponseEntity.ok(ApiResponse.success(medications));
     }
+
+
 }

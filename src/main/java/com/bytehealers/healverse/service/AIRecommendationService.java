@@ -447,6 +447,7 @@ public class AIRecommendationService {
         vars.put("dietaryRestriction", profile.getDietaryRestriction().toString());
         vars.put("healthCondition", profile.getHealthCondition().toString());
         vars.put("weightLossSpeed", profile.getWeightLossSpeed().toString());
+        vars.put("address" , profile.getAddress());
 
         vars.put("targetCalories", targetCalories);
         vars.put("protein", macros.getProtein());

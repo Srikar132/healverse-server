@@ -224,13 +224,15 @@ public class ChatService {
                 profile.getHealthCondition().getDescription() : "None";
         String otherHealth = profile.getOtherHealthConditionDescription() != null ?
                 " + " + profile.getOtherHealthConditionDescription() : "";
+        String address = profile.getAddress() != null && !profile.getAddress().trim().isEmpty() ?
+                profile.getAddress() : "Not specified";
 
         // Compact format optimized for Ayurvedic context
         return String.format("""
-            Profile: %s, %d yrs | %scm, %skg→%skg | %s | %s%s | Diet: %s | Health: %s%s
+            Profile: %s, %d yrs | %scm, %skg→%skg | %s | %s%s | Location: %s | Diet: %s | Health: %s%s
             """,
                 gender, age, height, currentWeight, targetWeight,
-                activityLevel, goal, weightLossSpeed, dietaryRestriction, healthCondition, otherHealth
+                activityLevel, goal, weightLossSpeed, address, dietaryRestriction, healthCondition, otherHealth
         ).trim();
     }
 

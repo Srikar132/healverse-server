@@ -8,6 +8,7 @@ User Profile:
 - Target Weight: ${targetWeight} kg
 - Goal: ${goal}
 - Activity Level: ${activityLevel}
+- Location/Address: ${address}
 - Dietary Restriction: ${dietaryRestriction}
 - Health Condition: ${healthCondition}
 - Weight Loss Speed: ${weightLossSpeed}
@@ -75,12 +76,14 @@ IMPORTANT REQUIREMENTS:
 1. Use traditional Indian ingredients and cooking methods
 2. Strictly consider dietary restrictions: ${dietaryRestriction}
 3. Address health condition: ${healthCondition} in meal selection
-4. Ensure meals are balanced and meet the nutritional targets
-5. Provide exact ingredient quantities (e.g., "200g basmati rice", "1 cup dal")
-6. Make recipes practical for home cooking with common Indian spices
-7. Total calories should approximately match the target: ${targetCalories} kcal
-8. Consider the user's goal: ${goal} when selecting ingredients
-9. Include preparation and cooking time estimates
-10. Provide specific health benefits relevant to the user's profile
+4. Consider regional food preferences based on location: ${address}
+5. Ensure meals are balanced and meet the nutritional targets
+6. Provide exact ingredient quantities (e.g., "200g basmati rice", "1 cup dal")
+7. Make recipes practical for home cooking with common Indian spices
+8. Total calories should approximately match the target: ${targetCalories} kcal
+9. Consider the user's goal: ${goal} when selecting ingredients
+10. Include preparation and cooking time estimates
+11. Provide specific health benefits relevant to the user's profile
+12. Suggest ingredients and dishes commonly available in the user's region/city
 
-Focus on authentic Indian cuisine that aligns with ${dietaryRestriction} preferences and supports ${goal} goals.
+Focus on authentic Indian cuisine that aligns with ${dietaryRestriction} preferences, supports ${goal} goals, and incorporates regional specialties from ${address} area when possible.

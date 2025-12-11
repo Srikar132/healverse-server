@@ -62,9 +62,16 @@ public class InsightsService {
         UserProfile profile = userProfileRepository.findByUserId(userId).orElse(null);
         if (profile != null) {
             data.setGoal(profile.getGoal() != null ? profile.getGoal().getDescription() : "Unknown");
-            data.setActivityLevel(profile.getActivityLevel() != null ? profile.getActivityLevel().getDescription() : "Unknown");
-            data.setHealthConditions(profile.getHealthCondition() != null ? profile.getHealthCondition().getDescription() : "None");
-            data.setDietaryRestrictions(profile.getDietaryRestriction() != null ? profile.getDietaryRestriction().getDescription() : "None");
+            data.setActivityLevel(
+                    profile.getActivityLevel() != null ? profile.getActivityLevel().getDescription() : "Unknown");
+            data.setHealthConditions(
+                    profile.getHealthCondition() != null ? profile.getHealthCondition().getDescription() : "None");
+            data.setDietaryRestrictions(
+                    profile.getDietaryRestriction() != null ? profile.getDietaryRestriction().getDescription()
+                            : "None");
+            data.setAddress(
+                    profile.getAddress() != null && !profile.getAddress().trim().isEmpty() ? profile.getAddress()
+                            : "Not specified");
         }
 
         // Get nutrition summary
@@ -208,8 +215,7 @@ public class InsightsService {
             String aiResponse = chatClient.prompt()
                     .messages(
                             new SystemMessage(systemPrompt),
-                            new UserMessage(userPrompt)
-                    )
+                            new UserMessage(userPrompt))
                     .call()
                     .content();
 
@@ -229,6 +235,7 @@ public class InsightsService {
         summary.append(String.format("Date: %s\n", data.getDate()));
         summary.append(String.format("User Goal: %s\n", data.getGoal()));
         summary.append(String.format("Activity Level: %s\n", data.getActivityLevel()));
+        summary.append(String.format("Location: %s\n", data.getAddress()));
         summary.append(String.format("Health Conditions: %s\n", data.getHealthConditions()));
         summary.append(String.format("Dietary Restrictions: %s\n\n", data.getDietaryRestrictions()));
 
@@ -275,7 +282,8 @@ public class InsightsService {
                     data.getMedicationsMissed() != null ? data.getMedicationsMissed() : 0,
                     calculateMedicationCompliance(data)));
             if (data.getMissedMedications() != null && !data.getMissedMedications().isEmpty()) {
-                summary.append(String.format("Missed Medications: %s\n", String.join(", ", data.getMissedMedications())));
+                summary.append(
+                        String.format("Missed Medications: %s\n", String.join(", ", data.getMissedMedications())));
             }
             summary.append("\n");
         }
@@ -287,9 +295,9 @@ public class InsightsService {
         if (data.getFoodsConsumed() != null && !data.getFoodsConsumed().isEmpty()) {
             summary.append(String.format("Unique Foods: %d (%s)\n",
                     data.getFoodsConsumed().size(),
-                    data.getFoodsConsumed().size() > 10 ?
-                            String.join(", ", data.getFoodsConsumed().subList(0, 10)) + "..." :
-                            String.join(", ", data.getFoodsConsumed())));
+                    data.getFoodsConsumed().size() > 10
+                            ? String.join(", ", data.getFoodsConsumed().subList(0, 10)) + "..."
+                            : String.join(", ", data.getFoodsConsumed())));
         }
 
         return summary.toString();
@@ -297,48 +305,49 @@ public class InsightsService {
 
     private String buildSystemPrompt() {
         return """
-        You are HealVerse AI, an expert health and wellness advisor specializing in personalized insights.
+                You are HealVerse AI, an expert health and wellness advisor specializing in personalized insights.
 
-        TASK: Analyze yesterday's health data and provide actionable insights in exactly 3 categories.
+                TASK: Analyze yesterday's health data and provide actionable insights in exactly 3 categories.
 
-        RESPONSE FORMAT: Return ONLY a JSON object with this exact structure:
-        {
-          "medicationInsights": [
-            { "content": "string", "type": "BETTER|SUGGESTION|WARNING|DANGER" },
-            { "content": "string", "type": "BETTER|SUGGESTION|WARNING|DANGER" },
-            { "content": "string", "type": "BETTER|SUGGESTION|WARNING|DANGER" }
-          ],
-          "dietInsights": [
-            { "content": "string", "type": "BETTER|SUGGESTION|WARNING|DANGER" },
-            { "content": "string", "type": "BETTER|SUGGESTION|WARNING|DANGER" },
-            { "content": "string", "type": "BETTER|SUGGESTION|WARNING|DANGER" }
-          ],
-          "healthInsights": [
-            { "content": "string", "type": "BETTER|SUGGESTION|WARNING|DANGER" },
-            { "content": "string", "type": "BETTER|SUGGESTION|WARNING|DANGER" },
-            { "content": "string", "type": "BETTER|SUGGESTION|WARNING|DANGER" }
-          ]
-        }
+                RESPONSE FORMAT: Return ONLY a JSON object with this exact structure:
+                {
+                  "medicationInsights": [
+                    { "content": "string", "type": "BETTER|SUGGESTION|WARNING|DANGER" },
+                    { "content": "string", "type": "BETTER|SUGGESTION|WARNING|DANGER" },
+                    { "content": "string", "type": "BETTER|SUGGESTION|WARNING|DANGER" }
+                  ],
+                  "dietInsights": [
+                    { "content": "string", "type": "BETTER|SUGGESTION|WARNING|DANGER" },
+                    { "content": "string", "type": "BETTER|SUGGESTION|WARNING|DANGER" },
+                    { "content": "string", "type": "BETTER|SUGGESTION|WARNING|DANGER" }
+                  ],
+                  "healthInsights": [
+                    { "content": "string", "type": "BETTER|SUGGESTION|WARNING|DANGER" },
+                    { "content": "string", "type": "BETTER|SUGGESTION|WARNING|DANGER" },
+                    { "content": "string", "type": "BETTER|SUGGESTION|WARNING|DANGER" }
+                  ]
+                }
 
-        RULES:
-        - Each category must have exactly 3 insights.
-        - "content" is a concise, actionable, personalized insight (max 150 characters).
-        - "type" indicates the nature of the insight:
-            BETTER → praise or positive reinforcement.
-            SUGGESTION → neutral advice for improvement.
-            WARNING → cautionary note about potential issues.
-            DANGER → critical health warning or urgent concern.
-        - Make all insights specific to the user's provided data.
-        - medicationInsights: Only about medication logs & compliance.
-        - dietInsights: Only about nutrition, hydration, exercise, food variety.
-        - healthInsights: General wellness, lifestyle, activity, and overall health.
-        - If a category has no related data, still return 3 general insights for that category.
-        - Return only the JSON object, no markdown, no extra text.
-        """;
+                RULES:
+                - Each category must have exactly 3 insights.
+                - "content" is a concise, actionable, personalized insight (max 150 characters).
+                - "type" indicates the nature of the insight:
+                    BETTER → praise or positive reinforcement.
+                    SUGGESTION → neutral advice for improvement.
+                    WARNING → cautionary note about potential issues.
+                    DANGER → critical health warning or urgent concern.
+                - Make all insights specific to the user's provided data.
+                - medicationInsights: Only about medication logs & compliance.
+                - dietInsights: Only about nutrition, hydration, exercise, food variety.
+                - healthInsights: General wellness, lifestyle, activity, and overall health.
+                - If a category has no related data, still return 3 general insights for that category.
+                - Return only the JSON object, no markdown, no extra text.
+                """;
     }
 
     private String buildUserPrompt(String userDataSummary) {
-        return "Analyze this user's yesterday health data and provide personalized insights (see only medicationInsights should be given for medication logs related , dietInsights areonly for diet analysys and logs of foods , water , exercise , and healthInsights are realted to all and everything):\n\n" + userDataSummary;
+        return "Analyze this user's yesterday health data and provide personalized insights (see only medicationInsights should be given for medication logs related , dietInsights areonly for diet analysys and logs of foods , water , exercise , and healthInsights are realted to all and everything):\n\n"
+                + userDataSummary;
     }
 
     private InsightsResponse parseAIResponse(String aiResponse) {
@@ -357,40 +366,44 @@ public class InsightsService {
         }
     }
 
-    // The next two methods are no longer needed but retained for backwards compatibility if you ever want to fall back to string based parsing
+    // The next two methods are no longer needed but retained for backwards
+    // compatibility if you ever want to fall back to string based parsing
     /*
-    private InsightsResponse parseJsonResponse(String jsonResponse) {
-        InsightsResponse response = new InsightsResponse();
-
-        try {
-            // Extract medicationInsights
-            List<InsightItem> medInsights = extractInsightsFromJson(jsonResponse, "medicationInsights");
-            response.setMedicationInsights(medInsights);
-
-            // Extract dietInsights
-            List<InsightItem> dietInsights = extractInsightsFromJson(jsonResponse, "dietInsights");
-            response.setDietInsights(dietInsights);
-
-            // Extract healthInsights
-            List<InsightItem> healthInsights = extractInsightsFromJson(jsonResponse, "healthInsights");
-            response.setHealthInsights(healthInsights);
-
-        } catch (Exception e) {
-            log.error("Error parsing JSON insights: {}", e.getMessage());
-            return getDefaultInsights();
-        }
-
-        return response;
-    }
-
-    private List<InsightItem> extractInsightsFromJson(String json, String key) {
-        List<InsightItem> insights = new ArrayList<>();
-        // A real implementation should use proper JSON parsing instead of regex
-        // Here, simply fallback to default if needed
-        insights.addAll(getDefaultInsightsForCategory(key));
-        return insights;
-    }
-    */
+     * private InsightsResponse parseJsonResponse(String jsonResponse) {
+     * InsightsResponse response = new InsightsResponse();
+     * 
+     * try {
+     * // Extract medicationInsights
+     * List<InsightItem> medInsights = extractInsightsFromJson(jsonResponse,
+     * "medicationInsights");
+     * response.setMedicationInsights(medInsights);
+     * 
+     * // Extract dietInsights
+     * List<InsightItem> dietInsights = extractInsightsFromJson(jsonResponse,
+     * "dietInsights");
+     * response.setDietInsights(dietInsights);
+     * 
+     * // Extract healthInsights
+     * List<InsightItem> healthInsights = extractInsightsFromJson(jsonResponse,
+     * "healthInsights");
+     * response.setHealthInsights(healthInsights);
+     * 
+     * } catch (Exception e) {
+     * log.error("Error parsing JSON insights: {}", e.getMessage());
+     * return getDefaultInsights();
+     * }
+     * 
+     * return response;
+     * }
+     * 
+     * private List<InsightItem> extractInsightsFromJson(String json, String key) {
+     * List<InsightItem> insights = new ArrayList<>();
+     * // A real implementation should use proper JSON parsing instead of regex
+     * // Here, simply fallback to default if needed
+     * insights.addAll(getDefaultInsightsForCategory(key));
+     * return insights;
+     * }
+     */
 
     private List<InsightItem> getDefaultInsightsForCategory(String category) {
         switch (category) {
@@ -398,22 +411,20 @@ public class InsightsService {
                 return Arrays.asList(
                         new InsightItem("Set medication reminders to improve consistency", "SUGGESTION"),
                         new InsightItem("Track side effects and discuss with your doctor", "SUGGESTION"),
-                        new InsightItem("Consider a pill organizer for better management", "SUGGESTION")
-                );
+                        new InsightItem("Consider a pill organizer for better management", "SUGGESTION"));
             case "dietInsights":
                 return Arrays.asList(
                         new InsightItem("Increase water intake for better hydration", "SUGGESTION"),
                         new InsightItem("Add more variety to your meals for balanced nutrition", "SUGGESTION"),
-                        new InsightItem("Consider smaller, frequent meals for better metabolism", "SUGGESTION")
-                );
+                        new InsightItem("Consider smaller, frequent meals for better metabolism", "SUGGESTION"));
             case "healthInsights":
                 return Arrays.asList(
                         new InsightItem("Aim for at least 30 minutes of daily activity", "SUGGESTION"),
                         new InsightItem("Maintain consistent sleep schedule for better recovery", "SUGGESTION"),
-                        new InsightItem("Monitor your progress and celebrate small wins", "BETTER")
-                );
+                        new InsightItem("Monitor your progress and celebrate small wins", "BETTER"));
             default:
-                return Collections.singletonList(new InsightItem("Stay consistent with your health goals", "SUGGESTION"));
+                return Collections
+                        .singletonList(new InsightItem("Stay consistent with your health goals", "SUGGESTION"));
         }
     }
 
@@ -422,30 +433,29 @@ public class InsightsService {
                 Arrays.asList(
                         new InsightItem("Set daily reminders for your medications", "SUGGESTION"),
                         new InsightItem("Keep a health journal to track symptoms", "SUGGESTION"),
-                        new InsightItem("Stay consistent with your medication schedule", "BETTER")
-                ),
+                        new InsightItem("Stay consistent with your medication schedule", "BETTER")),
                 Arrays.asList(
                         new InsightItem("Focus on balanced nutrition with all macronutrients", "SUGGESTION"),
                         new InsightItem("Increase your daily water intake", "SUGGESTION"),
-                        new InsightItem("Plan your meals ahead for better choices", "SUGGESTION")
-                ),
+                        new InsightItem("Plan your meals ahead for better choices", "SUGGESTION")),
                 Arrays.asList(
                         new InsightItem("Aim for at least 150 minutes of moderate exercise weekly", "SUGGESTION"),
                         new InsightItem("Prioritize 7-9 hours of quality sleep", "SUGGESTION"),
-                        new InsightItem("Practice stress management techniques daily", "SUGGESTION")
-                )
-        );
+                        new InsightItem("Practice stress management techniques daily", "SUGGESTION")));
     }
 
     // Helper methods
     private String formatNumber(BigDecimal number) {
-        if (number == null) return "0";
+        if (number == null)
+            return "0";
         return number.setScale(1, RoundingMode.HALF_UP).toString();
     }
 
     private double calculatePercentage(BigDecimal consumed, BigDecimal target) {
-        if (target == null || target.compareTo(BigDecimal.ZERO) == 0) return 0.0;
-        if (consumed == null) return 0.0;
+        if (target == null || target.compareTo(BigDecimal.ZERO) == 0)
+            return 0.0;
+        if (consumed == null)
+            return 0.0;
         return consumed.divide(target, 4, RoundingMode.HALF_UP)
                 .multiply(new BigDecimal("100"))
                 .doubleValue();

@@ -1,0 +1,147 @@
+// HealVerse Database Schema for dbdiagram.io
+// Visit https://dbdiagram.io/d and paste this code
+
+Project HealVerse {
+  database_type: 'PostgreSQL'
+  Note: 'HealVerse - Comprehensive Health & Wellness Platform Database'
+}
+
+Table users {
+  id bigint [pk, increment]
+  username varchar(255) [unique, not null]
+  password varchar(255)
+  email varchar(255) [unique]
+  google_id varchar(255) [unique]
+  profile_image varchar(255)
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  
+  Indexes {
+    username [unique]
+    email
+  }
+}
+
+Table user_profiles {
+  id bigint [pk, increment]
+  user_id bigint [ref: > users.id, not null]
+  gender gender_enum [not null]
+  age int [not null]
+  height_cm decimal(5,2) [not null]
+  current_weight_kg decimal(5,2) [not null]
+  target_weight_kg decimal(5,2) [not null]
+  activity_level activity_level_enum [not null]
+  goal goal_enum [not null]
+  weight_loss_speed weight_loss_speed_enum
+  dietary_restriction dietary_restriction_enum
+  health_conditions health_condition_enum
+  other_health_condition_description text
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+}
+
+Table conversations {
+  id varchar(255) [pk]
+  user_id bigint [ref: > users.id, not null]
+  title varchar(500)
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  
+  Indexes {
+    user_id
+  }
+}
+
+Table messages {
+  id bigint [pk, increment]
+  conversation_id varchar(255) [ref: > conversations.id, not null]
+  content text [not null]
+  role message_role_enum [not null]
+  created_at timestamp [default: `now()`]
+}
+
+Table diet_plans {
+  id bigint [pk, increment]
+  user_id bigint [ref: > users.id, not null]
+  plan_date date [not null]
+  total_calories decimal(6,2) [not null]
+  total_protein decimal(5,2) [not null]
+  total_carbs decimal(5,2) [not null]
+  total_fat decimal(5,2) [not null]
+  is_generated boolean [default: true]
+  created_at timestamp [default: `now()`]
+}
+
+Table meals {
+  id bigint [pk, increment]
+  diet_plan_id bigint [ref: > diet_plans.id, not null]
+  meal_type meal_type_enum [not null]
+  meal_name varchar(255) [not null]
+  calories decimal(6,2) [not null]
+  protein decimal(5,2) [not null]
+  carbs decimal(5,2) [not null]
+  fat decimal(5,2) [not null]
+  preparation_time_minutes int
+  instructions text
+  health_benefits text
+  ingredients json
+  created_at timestamp [default: `now()`]
+}
+
+Table food_logs {
+  id bigint [pk, increment]
+  user_id bigint [ref: > users.id, not null]
+  meal_type meal_type_enum [not null]
+  meal_name varchar(255)
+  image_url varchar(255)
+  image_description text
+  logged_at timestamp [not null]
+  created_at timestamp [default: `now()`]
+  is_from_camera boolean
+}
+
+Table food_items {
+  id bigint [pk, increment]
+  food_log_id bigint [ref: > food_logs.id, not null]
+  name varchar(255) [not null]
+  quantity double [not null]
+  unit varchar(50) [not null]
+  calories double [not null]
+  protein double [not null]
+  fat double [not null]
+  carbs double [not null]
+}
+
+Enum gender_enum {
+  MALE
+  FEMALE
+  OTHER
+}
+
+Enum activity_level_enum {
+  SEDENTARY
+  LIGHTLY_ACTIVE
+  MODERATELY_ACTIVE
+  VERY_ACTIVE
+  EXTREMELY_ACTIVE
+}
+
+Enum goal_enum {
+  LOSE_WEIGHT
+  MAINTAIN_WEIGHT
+  GAIN_WEIGHT
+  BUILD_MUSCLE
+}
+
+Enum message_role_enum {
+  USER
+  BOT
+}
+
+Enum meal_type_enum {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACK
+}
+
