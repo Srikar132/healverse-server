@@ -2,6 +2,7 @@ package com.bytehealers.healverse.controller;
 
 import com.bytehealers.healverse.dto.UserProfileDTO;
 import com.bytehealers.healverse.dto.response.ApiResponse;
+import com.bytehealers.healverse.exception.ResourceNotFoundException;
 import com.bytehealers.healverse.model.UserProfile;
 import com.bytehealers.healverse.service.UserService;
 import com.bytehealers.healverse.util.UserContext;
@@ -9,6 +10,8 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/user")
@@ -25,10 +28,8 @@ public class UserController {
     public ResponseEntity<ApiResponse<UserProfile>> getUserProfile() {
         try {
             Long userId = userContext.getCurrentUserId();
-            UserProfile profile = userService.getUserProfileById(userId);
-            if (profile == null) {
-                return ResponseEntity.status(404).body(ApiResponse.error("User profile not found"));
-            }
+            UserProfile profile = userService.getUserProfileById(userId).orElseThrow(() -> new ResourceNotFoundException("User with id: " + userId + " not found"));
+
             return ResponseEntity.ok(ApiResponse.success("User profile retrieved successfully", profile));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error("Failed to retrieve user profile: " + e.getMessage()));

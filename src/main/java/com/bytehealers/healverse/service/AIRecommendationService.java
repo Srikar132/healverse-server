@@ -1,6 +1,7 @@
 package com.bytehealers.healverse.service;
 
 import com.bytehealers.healverse.model.*;
+import com.bytehealers.healverse.repo.DailyNutritionSummaryRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -9,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
@@ -28,6 +30,7 @@ public class AIRecommendationService {
     private final ChatClient chatClient;
     private final NutritionCalculatorService nutritionCalculator;
     private final ObjectMapper objectMapper;
+    private final DailyNutritionSummaryRepository dailyNutritionSummaryRepository;
 
     @Value("classpath:/prompts/diet-plan-template.txt")
     private Resource dietPlanPromptTemplate;
@@ -68,6 +71,16 @@ public class AIRecommendationService {
             log.error("Failed to generate diet plan for user: {}", user.getUsername(), e);
             throw new RuntimeException("Failed to generate diet plan: " + e.getMessage(), e);
         }
+    }
+
+
+    /**
+     * Cached version of buildNutritionalContext - cache expires daily
+     * Cache key includes both userId and current date to ensure fresh data each day
+     */
+    @Cacheable(value = "nutritionalContext", key = "#userId + '_' + T(java.time.LocalDate).now().toString()")
+    public String buildNutritionalContextCached(Long userId) {
+        return buildNutritionalContext(userId);
     }
 
     /**
@@ -402,9 +415,10 @@ public class AIRecommendationService {
     // === EXISTING METHODS (unchanged) ===
 
     private List<Meal> generateMeals(UserProfile profile, BigDecimal targetCalories,
-                                     NutritionCalculatorService.MacroDistribution macros) {
+                                     NutritionCalculatorService.MacroDistribution macros ) {
         try {
-            String promptText = buildDietPlanPrompt(profile, targetCalories, macros);
+            User user = profile.getUser();
+            String promptText = buildDietPlanPrompt( user.getId() ,profile, targetCalories, macros);
 
             String response = chatClient.prompt()
                     .user(promptText)
@@ -419,13 +433,17 @@ public class AIRecommendationService {
         }
     }
 
-    private String buildDietPlanPrompt(UserProfile profile, BigDecimal targetCalories,
+    private String buildDietPlanPrompt(Long userId , UserProfile profile, BigDecimal targetCalories,
                                        NutritionCalculatorService.MacroDistribution macros) {
         try {
             Map<String, Object> templateVars = createTemplateVariables(profile, targetCalories, macros);
+
+            String nutritionContext = buildNutritionalContextCached(userId);
+            templateVars.put("nutritionalContext", nutritionContext);
+
+
             PromptTemplate promptTemplate = new PromptTemplate(dietPlanPromptTemplate);
             return promptTemplate.render(templateVars);
-
         } catch (Exception e) {
             log.error("Failed to build diet plan prompt", e);
             return buildFallbackPrompt(profile, targetCalories, macros);
@@ -541,12 +559,38 @@ public class AIRecommendationService {
     private Meal convertJsonToMeal(JsonNode mealNode) {
         Meal meal = new Meal();
 
-        meal.setMealType(MealType.valueOf(mealNode.get("mealType").asText()));
-        meal.setMealName(mealNode.get("mealName").asText());
-        meal.setCalories(BigDecimal.valueOf(mealNode.get("calories").asDouble()));
-        meal.setProtein(BigDecimal.valueOf(mealNode.get("protein").asDouble()));
-        meal.setCarbs(BigDecimal.valueOf(mealNode.get("carbs").asDouble()));
-        meal.setFat(BigDecimal.valueOf(mealNode.get("fat").asDouble()));
+        // Safely parse required fields with fallbacks
+        try {
+            JsonNode mealTypeNode = mealNode.get("mealType");
+            if (mealTypeNode != null && !mealTypeNode.isNull()) {
+                meal.setMealType(MealType.valueOf(mealTypeNode.asText()));
+            } else {
+                meal.setMealType(MealType.LUNCH); // Default fallback
+            }
+
+            JsonNode mealNameNode = mealNode.get("mealName");
+            meal.setMealName(mealNameNode != null && !mealNameNode.isNull() ?
+                mealNameNode.asText() : "Unknown Meal");
+
+            JsonNode caloriesNode = mealNode.get("calories");
+            meal.setCalories(caloriesNode != null && !caloriesNode.isNull() ?
+                BigDecimal.valueOf(caloriesNode.asDouble()) : BigDecimal.valueOf(300));
+
+            JsonNode proteinNode = mealNode.get("protein");
+            meal.setProtein(proteinNode != null && !proteinNode.isNull() ?
+                BigDecimal.valueOf(proteinNode.asDouble()) : BigDecimal.valueOf(15));
+
+            JsonNode carbsNode = mealNode.get("carbs");
+            meal.setCarbs(carbsNode != null && !carbsNode.isNull() ?
+                BigDecimal.valueOf(carbsNode.asDouble()) : BigDecimal.valueOf(40));
+
+            JsonNode fatNode = mealNode.get("fat");
+            meal.setFat(fatNode != null && !fatNode.isNull() ?
+                BigDecimal.valueOf(fatNode.asDouble()) : BigDecimal.valueOf(10));
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid meal type in AI response, using default: {}", e.getMessage());
+            meal.setMealType(MealType.LUNCH);
+        }
 
         meal.setPreparationTimeMinutes(
                 mealNode.has("preparationTimeMinutes") ?
@@ -693,6 +737,90 @@ public class AIRecommendationService {
             """,
                 mealType, profile.getDietaryRestriction(), profile.getHealthCondition(),
                 mealCalories, mealType, mealCalories.intValue(), profile.getDietaryRestriction());
+    }
+
+    /**
+     * Build nutritional context from user's historical eating patterns
+     * This critical method was missing, causing diet plans to be generated without
+     * considering user's past behavior and potential overconsumption patterns
+     */
+    private String buildNutritionalContext(Long userId) {
+        try {
+            // Get last 7 days of nutrition data
+            LocalDate endDate = LocalDate.now().minusDays(1);
+            LocalDate startDate = endDate.minusDays(6);
+
+            List<DailyNutritionSummary> recentNutrition = dailyNutritionSummaryRepository
+                    .findByUserIdAndDateBetween(userId, startDate, endDate);
+
+            if (recentNutrition.isEmpty()) {
+                return "No historical nutrition data available. Focus on balanced, portion-controlled meals.";
+            }
+
+            StringBuilder context = new StringBuilder("HISTORICAL EATING PATTERNS ANALYSIS:\n");
+
+            // Calculate averages and identify patterns
+            BigDecimal avgCalories = recentNutrition.stream()
+                    .map(DailyNutritionSummary::getConsumedCalories)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add)
+                    .divide(BigDecimal.valueOf(recentNutrition.size()), 2, java.math.RoundingMode.HALF_UP);
+
+            BigDecimal avgCarbs = recentNutrition.stream()
+                    .map(DailyNutritionSummary::getConsumedCarbs)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add)
+                    .divide(BigDecimal.valueOf(recentNutrition.size()), 2, java.math.RoundingMode.HALF_UP);
+
+            BigDecimal avgFat = recentNutrition.stream()
+                    .map(DailyNutritionSummary::getConsumedFat)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add)
+                    .divide(BigDecimal.valueOf(recentNutrition.size()), 2, java.math.RoundingMode.HALF_UP);
+
+            BigDecimal avgProtein = recentNutrition.stream()
+                    .map(DailyNutritionSummary::getConsumedProtein)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add)
+                    .divide(BigDecimal.valueOf(recentNutrition.size()), 2, java.math.RoundingMode.HALF_UP);
+
+            context.append(String.format("Recent 7-day averages: %.0f calories, %.0fg carbs, %.0fg protein, %.0fg fat\n",
+                    avgCalories.doubleValue(), avgCarbs.doubleValue(), avgProtein.doubleValue(), avgFat.doubleValue()));
+
+            // Identify overconsumption patterns
+            long highCalorieDays = recentNutrition.stream()
+                    .mapToLong(day -> day.getConsumedCalories().compareTo(BigDecimal.valueOf(2500)) > 0 ? 1 : 0)
+                    .sum();
+
+            long highCarbDays = recentNutrition.stream()
+                    .mapToLong(day -> day.getConsumedCarbs().compareTo(BigDecimal.valueOf(300)) > 0 ? 1 : 0)
+                    .sum();
+
+            long highFatDays = recentNutrition.stream()
+                    .mapToLong(day -> day.getConsumedFat().compareTo(BigDecimal.valueOf(100)) > 0 ? 1 : 0)
+                    .sum();
+
+            if (highCalorieDays >= 3) {
+                context.append("⚠️ CRITICAL: High calorie intake detected on ").append(highCalorieDays)
+                        .append(" days. Today's plan must emphasize portion control and high-satiety foods.\n");
+            }
+
+            if (highCarbDays >= 3) {
+                context.append("⚠️ WARNING: Excessive carbohydrate consumption pattern detected. ")
+                        .append("Focus on complex carbs and reduce refined sugars today.\n");
+            }
+
+            if (highFatDays >= 3) {
+                context.append("⚠️ WARNING: High fat intake pattern. Prioritize lean proteins and healthy fats today.\n");
+            }
+
+            // Check for missing days (poor adherence)
+            if (recentNutrition.size() < 5) {
+                context.append("📊 NOTE: Inconsistent food logging detected. ")
+                        .append("Today's plan includes motivational, easy-to-track meals.\n");
+            }
+
+            return context.toString();
+        } catch (Exception e) {
+            log.error("Error building nutritional context for user: {}", userId, e);
+            return "Unable to analyze historical data. Providing general balanced meal recommendations.";
+        }
     }
 
     // === HELPER CLASSES FOR HISTORICAL ANALYSIS ===

@@ -13,6 +13,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.MimeTypeUtils;
+
+import java.util.Optional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
@@ -104,8 +106,14 @@ public class FoodLoggingService {
 
             AIFoodResponse aiFoodResponse = objectMapper.readValue(aiResponse, AIFoodResponse.class);
 
-            return createFoodLog(userId, request, aiFoodResponse, false, null, null);
+            FoodLogResponse res = createFoodLog(userId, request, aiFoodResponse, false, null, null);
 
+            FoodLog savedFoodLog = foodLogRepository.findById(res.getId()).get();
+
+            // TODO: Temporarily disabled to fix StackOverflowError - investigate gamification recursion
+            // gamificationService.recordFoodLog(userId, savedFoodLog);
+
+            return res;
         } catch (Exception e) {
             throw new RuntimeException("Failed to analyze food description: " + e.getMessage());
         }
@@ -120,14 +128,13 @@ public class FoodLoggingService {
                     .call()
                     .content();
 
-            // Log the raw response for debugging
 //            log.debug("Raw AI Response: {}", aiResponse);
 
-            System.out.println("New ai responce" + aiResponse);
+            System.out.println("New ai response" + aiResponse);
 
             // Clean the response - remove markdown code blocks if present
-            String cleanedResponse = cleanJsonResponse(aiResponse);
-//            log.debug("Cleaned AI Response: {}", cleanedResponse);
+            String cleanedResponse = cleanJsonResponse(aiResponse)
+                .orElseThrow(() -> new RuntimeException("AI response was empty or invalid"));
 
             System.out.println("Cleaned ai response" + cleanedResponse);
 
@@ -138,10 +145,16 @@ public class FoodLoggingService {
             FoodLogResponse res = createFoodLog(userId, request, aiFoodResponse, true, imageUrl, aiFoodResponse.getDescription());
             nutritionSyncService.syncAfterFoodLogAsync(userId, res.getLoggedAt());
 
-            FoodLog savedLog = foodLogRepository.findById(res.getId())
+            Long foodLogId = res.getId();
+            if (foodLogId == null) {
+                throw new RuntimeException("Food log ID is null");
+            }
+            
+            FoodLog savedLog = foodLogRepository.findById(foodLogId)
                     .orElseThrow(ClassNotFoundException::new);
 
-//            gamificationService.recordFoodLog(userId, savedLog);
+            // TODO: Temporarily disabled to fix StackOverflowError - investigate gamification recursion
+            // gamificationService.recordFoodLog(userId, savedLog);
 
 
             return res;
@@ -151,8 +164,10 @@ public class FoodLoggingService {
         }
     }
 
-    private String cleanJsonResponse(String response) {
-        if (response == null) return null;
+    private Optional<String> cleanJsonResponse(String response) {
+        if (response == null || response.trim().isEmpty()) {
+            return Optional.empty();
+        }
 
         // Remove markdown code blocks
         response = response.trim();
@@ -165,7 +180,7 @@ public class FoodLoggingService {
             response = response.substring(0, response.length() - 3);
         }
 
-        return response.trim();
+        return Optional.of(response.trim());
     }
     private FoodLogResponse createFoodLog(Long userId, FoodLogRequest request, AIFoodResponse aiFoodResponse,
                                           boolean isFromCamera, String imageUrl, String imageDescription) {

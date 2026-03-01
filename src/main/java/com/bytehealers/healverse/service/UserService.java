@@ -1,6 +1,7 @@
 package com.bytehealers.healverse.service;
 
 import com.bytehealers.healverse.dto.UserProfileDTO;
+import com.bytehealers.healverse.exception.ResourceNotFoundException;
 import com.bytehealers.healverse.model.User;
 import com.bytehealers.healverse.model.UserProfile;
 import com.bytehealers.healverse.repo.UserProfileRepository;
@@ -70,45 +71,69 @@ public class UserService {
     }
 
     public UserProfile getUserProfile(String username) {
-        Optional<User> user = userRepository.findByUsername(username);
-        if (user.isPresent()) {
-            return user.get().getProfile();
-        } else {
-            return null;
-        }
+        return userRepository.findByUsername(username)
+                .map(User::getProfile)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
     }
 
     public UserProfile createUserProfile(Long userId, @Valid UserProfileDTO profileDTO) {
-        Optional<User> user = userRepository.findById(userId);
-        if (user.isPresent()) {
-            UserProfile profile = new UserProfile();
-            profile.setUser(user.get());
-            profile.setGender(profileDTO.getGender());
-            profile.setAge(profileDTO.getAge());
-            profile.setHeightCm(profileDTO.getHeightCm());
-            profile.setCurrentWeightKg(profileDTO.getCurrentWeightKg());
-            profile.setActivityLevel(profileDTO.getActivityLevel());
-            profile.setGoal(profileDTO.getGoal());
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+                
+        UserProfile profile = new UserProfile();
+        profile.setUser(user);
+        profile.setGender(profileDTO.getGender());
+        profile.setAge(profileDTO.getAge());
+        profile.setHeightCm(profileDTO.getHeightCm());
+        profile.setCurrentWeightKg(profileDTO.getCurrentWeightKg());
+        profile.setTargetWeightKg(profileDTO.getTargetWeightKg());
+        profile.setActivityLevel(profileDTO.getActivityLevel());
+        profile.setGoal(profileDTO.getGoal());
+        profile.setWeightLossSpeed(profileDTO.getWeightLossSpeed());
+        profile.setDietaryRestriction(profileDTO.getDietaryRestriction());
+        profile.setHealthCondition(profileDTO.getHealthConditions());
+        profile.setOtherHealthConditionDescription(profileDTO.getOtherHealthConditionDescription());
 
-            user.get().setProfile(profile);
+        user.setProfile(profile);
+        return userProfileService.createProfile(profile);
+    }
 
-            return userProfileService.createProfile(profile);
+    public Optional<User> findById(Long userId) {
+        if (userId == null) {
+            return Optional.empty();
         }
-
-        return null;
+        return userRepository.findById(userId);
     }
 
-    public User findById(Long userId) {
-        return  userRepository.findById(userId).orElse(null);
-    }
-
+    @Transactional
     public UserProfile updateUserProfile(Long userId, @Valid UserProfileDTO profileDTO) {
-//        return userProfileRepository.save()
-
-        return null;
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID cannot be null");
+        }
+        
+        UserProfile existingProfile = userProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("UserProfile", "userId", userId));
+                
+        // Update profile fields
+        existingProfile.setGender(profileDTO.getGender());
+        existingProfile.setAge(profileDTO.getAge());
+        existingProfile.setHeightCm(profileDTO.getHeightCm());
+        existingProfile.setCurrentWeightKg(profileDTO.getCurrentWeightKg());
+        existingProfile.setTargetWeightKg(profileDTO.getTargetWeightKg());
+        existingProfile.setActivityLevel(profileDTO.getActivityLevel());
+        existingProfile.setGoal(profileDTO.getGoal());
+        existingProfile.setWeightLossSpeed(profileDTO.getWeightLossSpeed());
+        existingProfile.setDietaryRestriction(profileDTO.getDietaryRestriction());
+        existingProfile.setHealthCondition(profileDTO.getHealthConditions());
+        existingProfile.setOtherHealthConditionDescription(profileDTO.getOtherHealthConditionDescription());
+        
+        return userProfileService.updateProfile(existingProfile);
     }
 
-    public UserProfile getUserProfileById(Long userId) {
-        return userProfileRepository.findById(userId).orElse(null);
+    public Optional<UserProfile> getUserProfileById(Long userId) {
+        if (userId == null) {
+            return Optional.empty();
+        }
+        return userProfileRepository.findByUserId(userId);
     }
 }

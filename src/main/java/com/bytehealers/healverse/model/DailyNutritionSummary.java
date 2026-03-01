@@ -79,7 +79,8 @@ public class DailyNutritionSummary {
     // === Business Logic ===
 
     public void calculateRemainingCalories() {
-        this.remainingCalories = targetCalories.subtract(consumedCalories).add(caloriesBurned);
+        // Formula: targetCalories + exerciseCalories - foodEatenCalories = remaining
+        this.remainingCalories = targetCalories.add(caloriesBurned).subtract(consumedCalories);
     }
 
     public BigDecimal getCalorieProgress() {
@@ -116,17 +117,15 @@ public class DailyNutritionSummary {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
-        calculateRemainingCalories();
+        // Note: calculateRemainingCalories() is called by setters to avoid infinite recursion
     }
 
-    // Update setters with logic
+    // Update setters - calculation is done explicitly in service layer to avoid recursion
     public void setConsumedCalories(BigDecimal consumedCalories) {
         this.consumedCalories = consumedCalories;
-        calculateRemainingCalories();
     }
 
     public void setCaloriesBurned(BigDecimal caloriesBurned) {
         this.caloriesBurned = caloriesBurned;
-        calculateRemainingCalories();
     }
 }

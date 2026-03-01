@@ -105,9 +105,10 @@ public class NutritionSyncService {
                 summary.calculateRemainingCalories();
             } catch (Exception e) {
                 log.warn("Failed to calculate remaining calories for userId {}: {}", userId, e.getMessage());
+                // Formula: targetCalories + exerciseCalories - foodEatenCalories = remaining
                 BigDecimal remaining = summary.getTargetCalories()
-                        .subtract(totalCalories)
-                        .add(totalCaloriesBurned);
+                        .add(totalCaloriesBurned)
+                        .subtract(totalCalories);
                 summary.setRemainingCalories(remaining);
             }
 

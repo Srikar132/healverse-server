@@ -1,10 +1,12 @@
 package com.bytehealers.healverse.service;
 
 import com.bytehealers.healverse.dto.GamificationSummaryDTO;
+import com.bytehealers.healverse.exception.ResourceNotFoundException;
 import com.bytehealers.healverse.model.*;
 import com.bytehealers.healverse.repo.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -57,7 +59,7 @@ public class GamificationService {
 
         // Award login points
         int loginPoints = 10;
-        awardPoints(userId, loginPoints, "DAILY_LOGIN", "Daily login bonus");
+        awardPoints(userId, loginPoints, PointReason.DAILY_LOGIN, "Daily login bonus");
 
         // Check for milestone bonuses
         checkStreakMilestones(userId, streak.getCurrentLoginStreak());
@@ -82,7 +84,7 @@ public class GamificationService {
         }
 
         if (bonusPoints > 0) {
-            awardPoints(userId, bonusPoints, "STREAK_MILESTONE", milestone + " bonus");
+            awardPoints(userId, bonusPoints, PointReason.STREAK_MILESTONE, milestone + " bonus");
         }
     }
 
@@ -117,7 +119,7 @@ public class GamificationService {
         }
 
         if (pointsEarned > 0) {
-            awardPoints(userId, pointsEarned, "DIET_FOLLOW",
+            awardPoints(userId, pointsEarned, PointReason.DIET_FOLLOW,
                     "Followed " + foodLog.getMealType() + " plan (" + similarityScore + "% match)");
 
             // Check if all 3 meals logged and matched
@@ -129,27 +131,27 @@ public class GamificationService {
         if (suggestedMeal == null || foodLog == null) {
             return 0;
         }
-        
+
         // Basic similarity calculation - can be enhanced with more sophisticated logic
         int similarity = 0;
-        
+
         // Check meal type match (30% weight)
         if (suggestedMeal.getMealType() == foodLog.getMealType()) {
             similarity += 30;
         }
-        
+
         // Check meal name similarity (40% weight)
         if (suggestedMeal.getMealName() != null && foodLog.getMealName() != null) {
             String suggestedName = suggestedMeal.getMealName().toLowerCase();
             String loggedName = foodLog.getMealName().toLowerCase();
-            
+
             if (suggestedName.equals(loggedName)) {
                 similarity += 40;
             } else if (suggestedName.contains(loggedName) || loggedName.contains(suggestedName)) {
                 similarity += 20;
             } else {
                 // Check for common food keywords
-                String[] keywords = {"chicken", "rice", "vegetables", "salad", "fish", "pasta", "soup"};
+                String[] keywords = { "chicken", "rice", "vegetables", "salad", "fish", "pasta", "soup" };
                 for (String keyword : keywords) {
                     if (suggestedName.contains(keyword) && loggedName.contains(keyword)) {
                         similarity += 10;
@@ -158,13 +160,13 @@ public class GamificationService {
                 }
             }
         }
-        
+
         // Check nutritional similarity (30% weight)
         if (foodLog.getItems() != null && !foodLog.getItems().isEmpty()) {
             // For now, give some points if food items are logged
             similarity += 15;
         }
-        
+
         return Math.min(similarity, 100); // Cap at 100%
     }
 
@@ -175,7 +177,7 @@ public class GamificationService {
         if (mealsLogged >= 3) {
             DailyPoints dailyPoints = getDailyPoints(userId, date);
             if (dailyPoints != null && dailyPoints.getTotalPoints() >= 45) { // At least 15 points per meal
-                awardPoints(userId, 50, "DAILY_COMPLETE", "Completed full day of diet plan");
+                awardPoints(userId, 50, PointReason.DAILY_COMPLETE, "Completed full day of diet plan");
             }
         }
     }
@@ -185,44 +187,64 @@ public class GamificationService {
         List<PointsHistory> todayDietPoints = historyRepository
                 .findByUserIdAndDateBetween(userId, date, date)
                 .stream()
-                .filter(ph -> "DIET_FOLLOW".equals(ph.getReason()))
+                .filter(ph -> PointReason.DIET_FOLLOW.name().equals(ph.getReason()))
                 .toList();
         
         return Math.min(todayDietPoints.size(), 3); // Max 3 meals per day
-    }
+    }    // === HELPER METHODS ===
 
-    // === HELPER METHODS ===
-
+    @Transactional
     private UserStreaks getOrCreateStreak(Long userId) {
+        // Try to find existing first
         Optional<UserStreaks> existingStreak = streakRepository.findByUserId(userId);
         if (existingStreak.isPresent()) {
             return existingStreak.get();
         }
-        
-        UserStreaks newStreak = new UserStreaks();
-        newStreak.setUserId(userId);
-        newStreak.setCurrentLoginStreak(0);
-        newStreak.setLongestLoginStreak(0);
-        newStreak.setLastLoginDate(null);
-        newStreak.setTotalPoints(0);
-        // Don't set createdAt and updatedAt - let @CreationTimestamp and @UpdateTimestamp handle them
-        return streakRepository.save(newStreak);
+
+        // Create new streak with retry logic for race conditions
+        try {
+            UserStreaks newStreak = new UserStreaks();
+            newStreak.setUserId(userId);
+            newStreak.setCurrentLoginStreak(0);
+            newStreak.setLongestLoginStreak(0);
+            newStreak.setLastLoginDate(null);
+            newStreak.setTotalPoints(0);
+            return streakRepository.save(newStreak);
+        } catch (Exception e) {
+            // Handle potential race condition - another thread created the record
+            Optional<UserStreaks> retryStreak = streakRepository.findByUserId(userId);
+            if (retryStreak.isPresent()) {
+                return retryStreak.get();
+            }
+            throw new RuntimeException("Failed to create or retrieve UserStreaks for userId: " + userId, e);
+        }
     }
 
+    @Transactional
     private DailyPoints getOrCreateDailyPoints(Long userId, LocalDate date) {
+        // Try to find existing first
         Optional<DailyPoints> existing = dailyPointsRepository.findByUserIdAndDate(userId, date);
         if (existing.isPresent()) {
             return existing.get();
         }
-        
-        DailyPoints newPoints = new DailyPoints();
-        newPoints.setUserId(userId);
-        newPoints.setDate(date);
-        newPoints.setLoginPoints(0);
-        newPoints.setDietPoints(0);
-        newPoints.setTotalPoints(0);
-        // Don't set createdAt - let @CreationTimestamp handle it
-        return dailyPointsRepository.save(newPoints);
+
+        // Create new daily points with retry logic for race conditions
+        try {
+            DailyPoints newPoints = new DailyPoints();
+            newPoints.setUserId(userId);
+            newPoints.setDate(date);
+            newPoints.setLoginPoints(0);
+            newPoints.setDietPoints(0);
+            newPoints.setTotalPoints(0);
+            return dailyPointsRepository.save(newPoints);
+        } catch (Exception e) {
+            // Handle potential race condition - unique constraint on (userId, date)
+            Optional<DailyPoints> retryPoints = dailyPointsRepository.findByUserIdAndDate(userId, date);
+            if (retryPoints.isPresent()) {
+                return retryPoints.get();
+            }
+            throw new RuntimeException("Failed to create or retrieve DailyPoints for userId: " + userId + ", date: " + date, e);
+        }
     }
 
     private DailyPoints getDailyPoints(Long userId, LocalDate date) {
@@ -233,19 +255,20 @@ public class GamificationService {
         if (dietPlan == null || dietPlan.getMeals() == null) {
             return null;
         }
-        
+
         return dietPlan.getMeals().stream()
                 .filter(meal -> meal.getMealType() == mealType)
                 .findFirst()
                 .orElse(null);
     }
 
-    private void awardPoints(Long userId, int points, String reason, String description) {
+    @Transactional
+    private void awardPoints(Long userId, int points, PointReason reason, String description) {
         LocalDate today = LocalDate.now();
 
         // Update daily points
         DailyPoints dailyPoints = getOrCreateDailyPoints(userId, today);
-        if (reason.equals("DAILY_LOGIN")) {
+        if (reason == PointReason.DAILY_LOGIN) {
             dailyPoints.setLoginPoints(dailyPoints.getLoginPoints() + points);
         } else {
             dailyPoints.setDietPoints(dailyPoints.getDietPoints() + points);
@@ -263,7 +286,7 @@ public class GamificationService {
         history.setId(null); // Explicitly set ID to null for auto-generation
         history.setUserId(userId);
         history.setPointsEarned(points);
-        history.setReason(reason);
+        history.setReason(reason.name());
         history.setDescription(description);
         history.setDate(today);
         // Don't set createdAt - let @CreationTimestamp handle it
@@ -289,16 +312,16 @@ public class GamificationService {
     }
 
     // === ADDITIONAL PUBLIC METHODS ===
-    
+
     public DailyPoints getTodayPoints(Long userId) {
         return getDailyPoints(userId, LocalDate.now());
     }
-    
+
     public List<PointsHistory> getUserPointsHistory(Long userId, int days) {
         LocalDate fromDate = LocalDate.now().minusDays(days);
         return historyRepository.findByUserIdAndDateAfter(userId, fromDate);
     }
-    
+
     public UserStreaks getUserStreaks(Long userId) {
         return getOrCreateStreak(userId);
     }

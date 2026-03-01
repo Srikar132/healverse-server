@@ -3,11 +3,13 @@ package com.bytehealers.healverse.service;
 import com.bytehealers.healverse.dto.NutritionStats;
 import com.bytehealers.healverse.dto.response.DashboardResponse;
 import com.bytehealers.healverse.dto.response.FoodLogResponse;
+import com.bytehealers.healverse.exception.ResourceNotFoundException;
 import com.bytehealers.healverse.model.*;
 import com.bytehealers.healverse.repo.DailyNutritionSummaryRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -126,7 +128,9 @@ public class DashboardService {
                     summary.getConsumedCalories(), summary.getCaloriesBurned(), summary.getWaterConsumedMl());
         } else {
             // Create empty summary if none exists
-            User user = userService.findById(userId);
+            User user = userService.findById(userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("User with id: " + userId + " not found"));
+
             summary = new DailyNutritionSummary(user, date);
             log.warn("⚠️ No summary found after sync, created empty summary");
         }

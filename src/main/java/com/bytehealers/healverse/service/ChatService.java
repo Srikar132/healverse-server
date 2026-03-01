@@ -92,6 +92,26 @@ public class ChatService {
         return mapToMessageResponse(botMessage);
     }
 
+    /**
+     * Test OpenAI connection with a simple request
+     */
+    public String testOpenAIConnection() {
+        try {
+            log.info("Testing OpenAI connection...");
+            
+            String response = chatClient.prompt()
+                    .user("Say 'Hello, OpenAI connection is working!'")
+                    .call()
+                    .content();
+            
+            log.info("OpenAI test successful: {}", response);
+            return response;
+        } catch (Exception e) {
+            log.error("OpenAI test failed", e);
+            throw new RuntimeException("OpenAI connection failed: " + e.getMessage(), e);
+        }
+    }
+
     public List<MessageResponse> getMessages(String conversationId, Long userId) {
         // Verify conversation belongs to user
         if (!conversationRepository.existsByIdAndUserId(conversationId, userId)) {
@@ -120,19 +140,57 @@ public class ChatService {
     }
 
     private String generateBotResponse(Conversation conversation, Long userId, String userMessage) {
-        try {
-            // Build optimized message chain
-            List<Message> messages = buildOptimizedMessageChain(conversation, userId, userMessage);
+        int maxRetries = 3;
+        int retryCount = 0;
+        
+        while (retryCount < maxRetries) {
+            try {
+                // Build optimized message chain
+                List<Message> messages = buildOptimizedMessageChain(conversation, userId, userMessage);
 
-            return chatClient.prompt()
-                    .messages(messages)
-                    .call()
-                    .content();
+                log.debug("Sending request to OpenAI with {} messages", messages.size());
+                
+                String response = chatClient.prompt()
+                        .messages(messages)
+                        .call()
+                        .content();
 
-        } catch (Exception e) {
-            log.error("Error generating bot response", e);
-            return "I apologize, but I'm having trouble processing your request right now. Please try again.";
+                log.debug("Received response from OpenAI: {}", response != null ? "Success" : "Null response");
+                return response;
+
+            } catch (org.springframework.web.client.RestClientException e) {
+                log.error("OpenAI API error (attempt {}/{}): {}", retryCount + 1, maxRetries, e.getMessage());
+                
+                if (e.getMessage().contains("Unexpected end-of-input") || 
+                    e.getMessage().contains("JSON parse error")) {
+                    log.error("JSON parsing error - possibly invalid API response");
+                }
+                
+                retryCount++;
+                if (retryCount < maxRetries) {
+                    try {
+                        Thread.sleep(1000 * retryCount); // Exponential backoff
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            } catch (Exception e) {
+                log.error("Unexpected error generating bot response (attempt {}/{})", retryCount + 1, maxRetries, e);
+                retryCount++;
+                if (retryCount < maxRetries) {
+                    try {
+                        Thread.sleep(1000 * retryCount);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
         }
+        
+        log.error("Failed to generate response after {} attempts", maxRetries);
+        return "I apologize, but I'm having trouble processing your request right now. Please try again in a moment.";
     }
 
     private List<Message> buildOptimizedMessageChain(Conversation conversation, Long userId, String currentMessage) {

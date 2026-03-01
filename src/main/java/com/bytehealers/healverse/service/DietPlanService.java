@@ -318,7 +318,7 @@ public class DietPlanService {
             Optional<DietPlan> existingPlan = dietPlanRepository.findByUserIdAndPlanDate(userId, date);
             if (existingPlan.isPresent()) {
                 log.info("Returning existing diet plan for user: {} on date: {}", userId, date);
-                return existingPlan.get();
+                return existingPlan.get(); // Safe - checked with isPresent()
             }
 
 //             if plan not exits , only generate if date is >= today's datae , other wise return null object
@@ -339,8 +339,6 @@ public class DietPlanService {
 
             // Generate complete diet plan using AI service
             DietPlan aiGeneratedPlan = aiRecommendationService.generateDietPlan(user);
-
-//            DietPlan aiGeneratedPlan = getDummyDietPlan(user);
 
             // Update the plan with the specific date
             aiGeneratedPlan.setPlanDate(date);
@@ -566,54 +564,7 @@ public class DietPlanService {
         dietPlan.setTotalFat(totalFat);
     }
 
-    /**
-     * Get diet plan statistics for a user
-     */
-//    public DietPlanStats getDietPlanStats(String username, LocalDate startDate, LocalDate endDate) {
-//        try {
-//            log.info("Getting diet plan statistics for user: {} from {} to {}", username, startDate, endDate);
-//
-//            List<DietPlan> plans = dietPlanRepository.findPlansByUsernameAndDateRange(username, startDate, endDate);
-//
-//            if (plans.isEmpty()) {
-//                return new DietPlanStats(); // Return empty stats
-//            }
-//
-//            // Calculate averages
-//            BigDecimal avgCalories = plans.stream()
-//                    .map(DietPlan::getTotalCalories)
-//                    .reduce(BigDecimal.ZERO, BigDecimal::add)
-//                    .divide(BigDecimal.valueOf(plans.size()), 2, java.math.RoundingMode.HALF_UP);
-//
-//            BigDecimal avgProtein = plans.stream()
-//                    .map(DietPlan::getTotalProtein)
-//                    .reduce(BigDecimal.ZERO, BigDecimal::add)
-//                    .divide(BigDecimal.valueOf(plans.size()), 2, java.math.RoundingMode.HALF_UP);
-//
-//            BigDecimal avgCarbs = plans.stream()
-//                    .map(DietPlan::getTotalCarbs)
-//                    .reduce(BigDecimal.ZERO, BigDecimal::add)
-//                    .divide(BigDecimal.valueOf(plans.size()), 2, java.math.RoundingMode.HALF_UP);
-//
-//            BigDecimal avgFat = plans.stream()
-//                    .map(DietPlan::getTotalFat)
-//                    .reduce(BigDecimal.ZERO, BigDecimal::add)
-//                    .divide(BigDecimal.valueOf(plans.size()), 2, java.math.RoundingMode.HALF_UP);
-//
-//            return DietPlanStats.builder()
-//                    .totalPlans(plans.size())
-//                    .averageCalories(avgCalories)
-//                    .averageProtein(avgProtein)
-//                    .averageCarbs(avgCarbs)
-//                    .averageFat(avgFat)
-//                    .dateRange(startDate + " to " + endDate)
-//                    .build();
-//
-//        } catch (Exception e) {
-//            log.error("Failed to get diet plan statistics for user: {}", username, e);
-//            throw new RuntimeException("Failed to get diet plan statistics: " + e.getMessage(), e);
-//        }
-//    }
+
 
     /**
      * Get user's current diet plan (today's plan)
@@ -660,60 +611,9 @@ public class DietPlanService {
         }
     }
 
-
-    // DUMMY DATA
-    public DietPlan getDummyDietPlan(User user) {
-        // Create dummy meals
-        Meal breakfast = new Meal();
-        breakfast.setMealType(MealType.BREAKFAST);
-        breakfast.setMealName("Oats with Banana");
-        breakfast.setCalories(new BigDecimal("350.00"));
-        breakfast.setProtein(new BigDecimal("10.00"));
-        breakfast.setCarbs(new BigDecimal("60.00"));
-        breakfast.setFat(new BigDecimal("5.00"));
-        breakfast.setPreparationTimeMinutes(10);
-        breakfast.setInstructions("Mix oats with milk and top with sliced banana.");
-        breakfast.setHealthBenefits("Provides energy and improves digestion.");
-        breakfast.setCreatedAt(LocalDateTime.now());
-        breakfast.setIngredients(List.of("Oats", "Milk", "Banana", "Honey"));
-
-        Meal lunch = new Meal();
-        lunch.setMealType(MealType.LUNCH);
-        lunch.setMealName("Grilled Chicken with Rice");
-        lunch.setCalories(new BigDecimal("600.00"));
-        lunch.setProtein(new BigDecimal("45.00"));
-        lunch.setCarbs(new BigDecimal("50.00"));
-        lunch.setFat(new BigDecimal("15.00"));
-        lunch.setPreparationTimeMinutes(30);
-        lunch.setInstructions("Grill the chicken and serve with boiled rice.");
-        lunch.setHealthBenefits("High protein meal for muscle recovery.");
-        lunch.setCreatedAt(LocalDateTime.now());
-        lunch.setIngredients(List.of("Chicken", "Rice", "Spices", "Olive Oil"));
-
-        // Create DietPlan
-        DietPlan dietPlan = new DietPlan();
-        dietPlan.setUser(user);
-        dietPlan.setPlanDate(LocalDate.now());
-        dietPlan.setTotalCalories(new BigDecimal("950.00"));
-        dietPlan.setTotalProtein(new BigDecimal("55.00"));
-        dietPlan.setTotalCarbs(new BigDecimal("110.00"));
-        dietPlan.setTotalFat(new BigDecimal("20.00"));
-        dietPlan.setIsGenerated(true);
-        dietPlan.setCreatedAt(LocalDateTime.now());
-
-        // Link meals to the diet plan
-        breakfast.setDietPlan(dietPlan);
-        lunch.setDietPlan(dietPlan);
-        dietPlan.setMeals(List.of(breakfast, lunch));
-
-        return dietPlan;
-    }
-
-    public DietPlan getPlan(Long dietPlanId) {
-        return dietPlanRepository.findById(dietPlanId).orElse(null);
-    }
-
     public DietPlan getTodaysDietPlan(Long userId) {
         return getDailyPlan(userId, LocalDate.now());
     }
+    
+
 }

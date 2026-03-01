@@ -75,9 +75,20 @@ public class MedicationAnalyticsService {
             if (dayLogs.isEmpty()) {
                 adherenceData.add(0);
             } else {
-                long takenCount = dayLogs.stream().filter(log -> log.getStatus() == LogStatus.TAKEN).count();
-                int adherencePercent = (int) ((takenCount * 100) / dayLogs.size());
-                adherenceData.add(adherencePercent);
+                // Only count completed logs for accurate adherence calculation
+                List<MedicationLog> completedLogs = dayLogs.stream()
+                        .filter(log -> log.getStatus() != LogStatus.PENDING)
+                        .collect(Collectors.toList());
+                        
+                if (completedLogs.isEmpty()) {
+                    adherenceData.add(0); // All logs still pending
+                } else {
+                    long takenCount = completedLogs.stream()
+                            .filter(log -> log.getStatus() == LogStatus.TAKEN)
+                            .count();
+                    int adherencePercent = (int) ((takenCount * 100) / completedLogs.size());
+                    adherenceData.add(adherencePercent);
+                }
             }
         }
 
@@ -99,8 +110,17 @@ public class MedicationAnalyticsService {
 
             int intakePercent = 0;
             if (!dayLogs.isEmpty()) {
-                long takenCount = dayLogs.stream().filter(log -> log.getStatus() == LogStatus.TAKEN).count();
-                intakePercent = (int) ((takenCount * 100) / dayLogs.size());
+                // Only count completed logs for accurate intake calculation
+                List<MedicationLog> completedLogs = dayLogs.stream()
+                        .filter(log -> log.getStatus() != LogStatus.PENDING)
+                        .collect(Collectors.toList());
+                        
+                if (!completedLogs.isEmpty()) {
+                    long takenCount = completedLogs.stream()
+                            .filter(log -> log.getStatus() == LogStatus.TAKEN)
+                            .count();
+                    intakePercent = (int) ((takenCount * 100) / completedLogs.size());
+                }
             }
 
             DailyIntakeData dailyData = new DailyIntakeData();
@@ -161,10 +181,24 @@ public class MedicationAnalyticsService {
     }
 
     private int calculateAdherenceRate(List<MedicationLog> logs) {
-        if (logs.isEmpty()) return 100;
+        if (logs.isEmpty()) {
+            return 0; // No medications = 0% adherence, not 100%
+        }
 
-        long takenCount = logs.stream().filter(log -> log.getStatus() == LogStatus.TAKEN).count();
-        return (int) Math.round((double) takenCount / logs.size() * 100);
+        // Count only completed logs (TAKEN, MISSED, SKIPPED) - exclude PENDING
+        List<MedicationLog> completedLogs = logs.stream()
+                .filter(log -> log.getStatus() != LogStatus.PENDING)
+                .collect(Collectors.toList());
+                
+        if (completedLogs.isEmpty()) {
+            return 0; // All logs are still pending
+        }
+
+        long takenCount = completedLogs.stream()
+                .filter(log -> log.getStatus() == LogStatus.TAKEN)
+                .count();
+                
+        return (int) Math.round((double) takenCount / completedLogs.size() * 100);
     }
 
     private int calculateCurrentStreak(Long userId) {
@@ -183,9 +217,26 @@ public class MedicationAnalyticsService {
 
         while (logsByDate.containsKey(currentDate)) {
             List<MedicationLog> dayLogs = logsByDate.get(currentDate);
-            long takenCount = dayLogs.stream().filter(log -> log.getStatus() == LogStatus.TAKEN).count();
-
-            if (takenCount == dayLogs.size() && !dayLogs.isEmpty()) {
+            
+            // Filter out pending logs for fair streak calculation
+            List<MedicationLog> completedLogs = dayLogs.stream()
+                    .filter(log -> log.getStatus() != LogStatus.PENDING)
+                    .collect(Collectors.toList());
+                    
+            if (completedLogs.isEmpty()) {
+                // Skip days with no completed logs (all pending)
+                currentDate = currentDate.minusDays(1);
+                continue;
+            }
+            
+            long takenCount = completedLogs.stream()
+                    .filter(log -> log.getStatus() == LogStatus.TAKEN)
+                    .count();
+                    
+            // More lenient streak calculation: 80% adherence maintains streak
+            double adherenceRate = (double) takenCount / completedLogs.size();
+            
+            if (adherenceRate >= 0.80) { // 80% threshold instead of 100%
                 streak++;
                 currentDate = currentDate.minusDays(1);
             } else {

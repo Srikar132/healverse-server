@@ -13,6 +13,9 @@ User Profile:
 - Health Condition: ${healthCondition}
 - Weight Loss Speed: ${weightLossSpeed}
 
+${nutritionalContext}
+
+
 Nutritional Requirements:
 - Daily Calories: ${targetCalories} kcal
 - Protein: ${protein} g
