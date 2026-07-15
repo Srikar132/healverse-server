@@ -18,7 +18,7 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@ToString(exclude = {"conversations" , "exerciseLogs" , "summaries" , "waterLogs" , "medications" , "dietPlans"})
+@ToString(exclude = {"conversations" , "exerciseLogs" , "summaries" , "waterLogs" , "dietPlans"})
 public class User {
 
     @Id
@@ -73,10 +73,6 @@ public class User {
     @JsonIgnore
     private List<WaterLog> waterLogs;
 
-
-    @OneToMany(fetch = FetchType.LAZY , mappedBy = "user" , cascade = CascadeType.ALL)
-    @JsonIgnore
-    private List<Medication> medications;
 
     @OneToMany(fetch = FetchType.LAZY ,   mappedBy = "user" , cascade = CascadeType.ALL)
     @JsonIgnore

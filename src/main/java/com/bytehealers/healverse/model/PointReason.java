@@ -6,8 +6,7 @@ public enum PointReason {
     STREAK_MILESTONE("Login streak milestone"),
     DAILY_COMPLETE("Completed full day diet plan"),
     EXERCISE_LOG("Exercise activity logged"),
-    WATER_INTAKE("Water intake goal met"),
-    MEDICATION_ADHERENCE("Medication taken on time");
+    WATER_INTAKE("Water intake goal met");
     
     private final String description;
     

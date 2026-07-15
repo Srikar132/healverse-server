@@ -4,6 +4,7 @@ import com.bytehealers.healverse.model.*;
 import com.bytehealers.healverse.repo.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.extern.slf4j.Slf4j;
 
@@ -406,7 +407,13 @@ public class DietPlanService {
         }
     }
 
-    @Transactional
+    // REQUIRES_NEW: this is called from NutritionSyncService while a log-food/
+    // water/exercise transaction is already active. If AI generation fails here
+    // (e.g. invalid OpenAI key), only THIS isolated transaction rolls back —
+    // without REQUIRES_NEW, the failure would mark the caller's shared
+    // transaction rollback-only, causing an UnexpectedRollbackException at
+    // commit time that fails the unrelated logging request too.
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public DietPlan getDailyPlan(Long userId, LocalDate date) {
         try {
             log.info("Getting daily diet plan for user: {} on date: {}", userId, date);

@@ -12,7 +12,6 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class InsightsResponse {
-    private List<InsightItem> medicationInsights;
     private List<InsightItem> dietInsights;
     private List<InsightItem> healthInsights;
 

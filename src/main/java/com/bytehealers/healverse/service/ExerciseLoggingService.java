@@ -5,6 +5,7 @@ import com.bytehealers.healverse.model.ExerciseLog;
 import com.bytehealers.healverse.model.User;
 import com.bytehealers.healverse.repo.ExerciseLogRepository;
 import com.bytehealers.healverse.repo.UserRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
+@Slf4j
 public class ExerciseLoggingService {
 
     @Autowired
@@ -57,10 +59,21 @@ public class ExerciseLoggingService {
 
         ExerciseLog savedLog = exerciseLogRepository.save(exerciseLog);
 
-        // Trigger sync
-        nutritionSyncService.syncAfterExerciseLog(user.getId(), savedLog.getLoggedAt());
+        // Trigger sync — best-effort only, must never fail the log itself
+        syncNutritionSummary(user.getId(), savedLog.getLoggedAt());
 
         return savedLog;
+    }
+
+    // The nutrition-summary sync is a side-effect, not the point of this
+    // request — a failure in it (e.g. AI diet-plan generation erroring) must
+    // never turn a successful log into an error response.
+    private void syncNutritionSummary(Long userId, LocalDateTime loggedAt) {
+        try {
+            nutritionSyncService.syncAfterExerciseLog(userId, loggedAt);
+        } catch (Exception e) {
+            log.warn("Nutrition summary sync failed after exercise log for userId {}: {}", userId, e.getMessage());
+        }
     }
 
     public List<ExerciseLog> getTodaysExerciseLogs(Long userId) {
@@ -114,7 +127,7 @@ public class ExerciseLoggingService {
 
         ExerciseLog savedLog = exerciseLogRepository.save(exerciseLog);
 
-        nutritionSyncService.syncAfterExerciseLog(user.getId(), savedLog.getLoggedAt());
+        syncNutritionSummary(user.getId(), savedLog.getLoggedAt());
 
         return savedLog;
     }
@@ -137,7 +150,7 @@ public class ExerciseLoggingService {
         LocalDateTime loggedAt = exerciseLog.getLoggedAt();
         exerciseLogRepository.delete(exerciseLog);
 
-        nutritionSyncService.syncAfterExerciseLog(user.getId(), loggedAt);
+        syncNutritionSummary(user.getId(), loggedAt);
 
         return true;
     }

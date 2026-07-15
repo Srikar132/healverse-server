@@ -33,12 +33,6 @@ public class DailyHealthData {
     private Integer totalExerciseMinutes;
     private List<String> exerciseTypes;
 
-    // Medication compliance
-    private Integer totalMedicationsScheduled;
-    private Integer medicationsTaken;
-    private Integer medicationsMissed;
-    private List<String> missedMedications;
-
     // Food variety
     private List<String> foodsConsumed;
     private Integer mealCount;

@@ -6,8 +6,8 @@ import com.bytehealers.healverse.model.User;
 import com.bytehealers.healverse.model.WaterLog;
 import com.bytehealers.healverse.repo.UserRepository;
 import com.bytehealers.healverse.repo.WaterLogRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cglib.core.Local;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
+@Slf4j
 public class WaterLoggingService {
 
     @Autowired
@@ -42,7 +43,7 @@ public class WaterLoggingService {
 
         WaterLog savedLog = waterLogRepository.save(waterLog);
 
-        nutritionSyncService.syncAfterWaterLog(userId, savedLog.getLoggedAt());
+        syncNutritionSummary(userId, savedLog.getLoggedAt());
 
         return savedLog;
     }
@@ -62,9 +63,20 @@ public class WaterLoggingService {
 
         WaterLog savedLog = waterLogRepository.save(waterLog);
 
-        nutritionSyncService.syncAfterWaterLog(userId, savedLog.getLoggedAt());
+        syncNutritionSummary(userId, savedLog.getLoggedAt());
 
         return savedLog;
+    }
+
+    // The nutrition-summary sync is a side-effect, not the point of this
+    // request — a failure in it (e.g. AI diet-plan generation erroring) must
+    // never turn a successful log into an error response.
+    private void syncNutritionSummary(Long userId, LocalDateTime loggedAt) {
+        try {
+            nutritionSyncService.syncAfterWaterLog(userId, loggedAt);
+        } catch (Exception e) {
+            log.warn("Nutrition summary sync failed after water log for userId {}: {}", userId, e.getMessage());
+        }
     }
 
     public List<WaterLog> getTodaysWaterLogs(Long userId) {
@@ -101,7 +113,7 @@ public class WaterLoggingService {
         LocalDateTime loggedAt = waterLog.getLoggedAt();
         waterLogRepository.delete(waterLog);
 
-        nutritionSyncService.syncAfterWaterLog(userId, loggedAt);
+        syncNutritionSummary(userId, loggedAt);
 
         return true;
     }

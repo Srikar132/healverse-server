@@ -32,7 +32,6 @@ public class InsightsService {
     private final FoodLogRepository foodLogRepository;
     private final ExerciseLogRepository exerciseLogRepository;
     private final WaterLogRepository waterLogRepository;
-    private final MedicationLogRepository medicationLogRepository;
     private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
@@ -79,9 +78,6 @@ public class InsightsService {
 
         // Get exercise data
         collectExerciseData(userId, date, data);
-
-        // Get medication data
-        collectMedicationData(userId, date, data);
 
         // Get food variety data
         collectFoodVarietyData(userId, date, data);
@@ -160,32 +156,6 @@ public class InsightsService {
                 .distinct()
                 .collect(Collectors.toList());
         data.setExerciseTypes(exerciseTypes);
-    }
-
-    private void collectMedicationData(Long userId, LocalDate date, DailyHealthData data) {
-        LocalDateTime startOfDay = date.atStartOfDay();
-        LocalDateTime endOfDay = date.atTime(23, 59, 59);
-
-        List<MedicationLog> medicationLogs = medicationLogRepository
-                .findByUserIdAndDateRange(userId, startOfDay, endOfDay);
-
-        data.setTotalMedicationsScheduled(medicationLogs.size());
-
-        long takenCount = medicationLogs.stream()
-                .filter(log -> log.getStatus() == LogStatus.TAKEN)
-                .count();
-        data.setMedicationsTaken((int) takenCount);
-
-        long missedCount = medicationLogs.stream()
-                .filter(log -> log.getStatus() == LogStatus.MISSED)
-                .count();
-        data.setMedicationsMissed((int) missedCount);
-
-        List<String> missedMeds = medicationLogs.stream()
-                .filter(log -> log.getStatus() == LogStatus.MISSED)
-                .map(log -> log.getMedication().getName())
-                .collect(Collectors.toList());
-        data.setMissedMedications(missedMeds);
     }
 
     private void collectFoodVarietyData(Long userId, LocalDate date, DailyHealthData data) {
@@ -273,21 +243,6 @@ public class InsightsService {
         }
         summary.append("\n");
 
-        // Medication compliance
-        if (data.getTotalMedicationsScheduled() != null && data.getTotalMedicationsScheduled() > 0) {
-            summary.append("MEDICATION COMPLIANCE:\n");
-            summary.append(String.format("Scheduled: %d, Taken: %d, Missed: %d (%.1f%% compliance)\n",
-                    data.getTotalMedicationsScheduled(),
-                    data.getMedicationsTaken() != null ? data.getMedicationsTaken() : 0,
-                    data.getMedicationsMissed() != null ? data.getMedicationsMissed() : 0,
-                    calculateMedicationCompliance(data)));
-            if (data.getMissedMedications() != null && !data.getMissedMedications().isEmpty()) {
-                summary.append(
-                        String.format("Missed Medications: %s\n", String.join(", ", data.getMissedMedications())));
-            }
-            summary.append("\n");
-        }
-
         // Food variety
         summary.append("FOOD VARIETY:\n");
         summary.append(String.format("Total Meals Logged: %d\n",
@@ -307,15 +262,10 @@ public class InsightsService {
         return """
                 You are HealVerse AI, an expert health and wellness advisor specializing in personalized insights.
 
-                TASK: Analyze yesterday's health data and provide actionable insights in exactly 3 categories.
+                TASK: Analyze yesterday's health data and provide actionable insights in exactly 2 categories.
 
                 RESPONSE FORMAT: Return ONLY a JSON object with this exact structure:
                 {
-                  "medicationInsights": [
-                    { "content": "string", "type": "BETTER|SUGGESTION|WARNING|DANGER" },
-                    { "content": "string", "type": "BETTER|SUGGESTION|WARNING|DANGER" },
-                    { "content": "string", "type": "BETTER|SUGGESTION|WARNING|DANGER" }
-                  ],
                   "dietInsights": [
                     { "content": "string", "type": "BETTER|SUGGESTION|WARNING|DANGER" },
                     { "content": "string", "type": "BETTER|SUGGESTION|WARNING|DANGER" },
@@ -337,7 +287,6 @@ public class InsightsService {
                     WARNING → cautionary note about potential issues.
                     DANGER → critical health warning or urgent concern.
                 - Make all insights specific to the user's provided data.
-                - medicationInsights: Only about medication logs & compliance.
                 - dietInsights: Only about nutrition, hydration, exercise, food variety.
                 - healthInsights: General wellness, lifestyle, activity, and overall health.
                 - If a category has no related data, still return 3 general insights for that category.
@@ -346,7 +295,7 @@ public class InsightsService {
     }
 
     private String buildUserPrompt(String userDataSummary) {
-        return "Analyze this user's yesterday health data and provide personalized insights (see only medicationInsights should be given for medication logs related , dietInsights areonly for diet analysys and logs of foods , water , exercise , and healthInsights are realted to all and everything):\n\n"
+        return "Analyze this user's yesterday health data and provide personalized insights (dietInsights are only for diet analysis and logs of foods, water, exercise, and healthInsights are related to all and everything):\n\n"
                 + userDataSummary;
     }
 
@@ -366,52 +315,8 @@ public class InsightsService {
         }
     }
 
-    // The next two methods are no longer needed but retained for backwards
-    // compatibility if you ever want to fall back to string based parsing
-    /*
-     * private InsightsResponse parseJsonResponse(String jsonResponse) {
-     * InsightsResponse response = new InsightsResponse();
-     * 
-     * try {
-     * // Extract medicationInsights
-     * List<InsightItem> medInsights = extractInsightsFromJson(jsonResponse,
-     * "medicationInsights");
-     * response.setMedicationInsights(medInsights);
-     * 
-     * // Extract dietInsights
-     * List<InsightItem> dietInsights = extractInsightsFromJson(jsonResponse,
-     * "dietInsights");
-     * response.setDietInsights(dietInsights);
-     * 
-     * // Extract healthInsights
-     * List<InsightItem> healthInsights = extractInsightsFromJson(jsonResponse,
-     * "healthInsights");
-     * response.setHealthInsights(healthInsights);
-     * 
-     * } catch (Exception e) {
-     * log.error("Error parsing JSON insights: {}", e.getMessage());
-     * return getDefaultInsights();
-     * }
-     * 
-     * return response;
-     * }
-     * 
-     * private List<InsightItem> extractInsightsFromJson(String json, String key) {
-     * List<InsightItem> insights = new ArrayList<>();
-     * // A real implementation should use proper JSON parsing instead of regex
-     * // Here, simply fallback to default if needed
-     * insights.addAll(getDefaultInsightsForCategory(key));
-     * return insights;
-     * }
-     */
-
     private List<InsightItem> getDefaultInsightsForCategory(String category) {
         switch (category) {
-            case "medicationInsights":
-                return Arrays.asList(
-                        new InsightItem("Set medication reminders to improve consistency", "SUGGESTION"),
-                        new InsightItem("Track side effects and discuss with your doctor", "SUGGESTION"),
-                        new InsightItem("Consider a pill organizer for better management", "SUGGESTION"));
             case "dietInsights":
                 return Arrays.asList(
                         new InsightItem("Increase water intake for better hydration", "SUGGESTION"),
@@ -430,10 +335,6 @@ public class InsightsService {
 
     private InsightsResponse getDefaultInsights() {
         return new InsightsResponse(
-                Arrays.asList(
-                        new InsightItem("Set daily reminders for your medications", "SUGGESTION"),
-                        new InsightItem("Keep a health journal to track symptoms", "SUGGESTION"),
-                        new InsightItem("Stay consistent with your medication schedule", "BETTER")),
                 Arrays.asList(
                         new InsightItem("Focus on balanced nutrition with all macronutrients", "SUGGESTION"),
                         new InsightItem("Increase your daily water intake", "SUGGESTION"),
@@ -461,11 +362,4 @@ public class InsightsService {
                 .doubleValue();
     }
 
-    private double calculateMedicationCompliance(DailyHealthData data) {
-        if (data.getTotalMedicationsScheduled() == null || data.getTotalMedicationsScheduled() == 0) {
-            return 0.0;
-        }
-        int taken = data.getMedicationsTaken() != null ? data.getMedicationsTaken() : 0;
-        return ((double) taken / data.getTotalMedicationsScheduled()) * 100;
-    }
 }

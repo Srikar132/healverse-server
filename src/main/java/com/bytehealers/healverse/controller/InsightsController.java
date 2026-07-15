@@ -2,7 +2,6 @@ package com.bytehealers.healverse.controller;
 
 import com.bytehealers.healverse.dto.response.ApiResponse;
 import com.bytehealers.healverse.dto.response.InsightsResponse;
-//import com.bytehealers.healverse.service.InsightsService;
 import com.bytehealers.healverse.service.InsightsService;
 import com.bytehealers.healverse.util.UserContext;
 import lombok.RequiredArgsConstructor;

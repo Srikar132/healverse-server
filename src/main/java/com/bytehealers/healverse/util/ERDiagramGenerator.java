@@ -189,42 +189,6 @@ public class ERDiagramGenerator {
         mermaid.append("        timestamp updated_at\n");
         mermaid.append("    }\n\n");
 
-        // Medications table
-        mermaid.append("    medications {\n");
-        mermaid.append("        uuid id PK\n");
-        mermaid.append("        bigint user_id FK\n");
-        mermaid.append("        varchar name\n");
-        mermaid.append("        varchar dosage\n");
-        mermaid.append("        enum type\n");
-        mermaid.append("        enum frequency\n");
-        mermaid.append("        date start_date\n");
-        mermaid.append("        date end_date\n");
-        mermaid.append("        boolean is_active\n");
-        mermaid.append("        text notes\n");
-        mermaid.append("        timestamp created_at\n");
-        mermaid.append("        timestamp updated_at\n");
-        mermaid.append("    }\n\n");
-
-        // Medication Schedules table
-        mermaid.append("    medication_schedules {\n");
-        mermaid.append("        uuid id PK\n");
-        mermaid.append("        uuid medication_id FK\n");
-        mermaid.append("        time time\n");
-        mermaid.append("        boolean is_active\n");
-        mermaid.append("        timestamp created_at\n");
-        mermaid.append("    }\n\n");
-
-        // Medication Logs table
-        mermaid.append("    medication_logs {\n");
-        mermaid.append("        uuid id PK\n");
-        mermaid.append("        uuid medication_id FK\n");
-        mermaid.append("        timestamp scheduled_time\n");
-        mermaid.append("        timestamp actual_time\n");
-        mermaid.append("        enum status\n");
-        mermaid.append("        text notes\n");
-        mermaid.append("        timestamp created_at\n");
-        mermaid.append("    }\n\n");
-
         // Define relationships
         mermaid.append("    %% Relationships\n");
         mermaid.append("    users ||--|| user_profiles : \"has profile\"\n");
@@ -237,10 +201,7 @@ public class ERDiagramGenerator {
         mermaid.append("    users ||--o{ exercise_logs : \"logs exercises\"\n");
         mermaid.append("    users ||--o{ water_logs : \"logs water intake\"\n");
         mermaid.append("    users ||--o{ daily_nutrition_summaries : \"has summaries\"\n");
-        mermaid.append("    users ||--o{ medications : \"takes medications\"\n");
-        mermaid.append("    medications ||--o{ medication_schedules : \"has schedules\"\n");
-        mermaid.append("    medications ||--o{ medication_logs : \"has logs\"\n");
-        
+
         mermaid.append("```\n\n");
         mermaid.append("## How to View\n");
         mermaid.append("1. Copy the mermaid code block\n");
@@ -406,39 +367,6 @@ public class ERDiagramGenerator {
         plantuml.append("  updated_at : TIMESTAMP\n");
         plantuml.append("}\n\n");
 
-        plantuml.append("entity \"medications\" as medications {\n");
-        plantuml.append("  * id : UUID PK\n");
-        plantuml.append("  * user_id : BIGINT FK\n");
-        plantuml.append("  * name : VARCHAR(255)\n");
-        plantuml.append("  * dosage : VARCHAR(255)\n");
-        plantuml.append("  * type : ENUM\n");
-        plantuml.append("  * frequency : ENUM\n");
-        plantuml.append("  * start_date : DATE\n");
-        plantuml.append("  end_date : DATE\n");
-        plantuml.append("  is_active : BOOLEAN\n");
-        plantuml.append("  notes : TEXT\n");
-        plantuml.append("  created_at : TIMESTAMP\n");
-        plantuml.append("  updated_at : TIMESTAMP\n");
-        plantuml.append("}\n\n");
-
-        plantuml.append("entity \"medication_schedules\" as medication_schedules {\n");
-        plantuml.append("  * id : UUID PK\n");
-        plantuml.append("  * medication_id : UUID FK\n");
-        plantuml.append("  * time : TIME\n");
-        plantuml.append("  is_active : BOOLEAN\n");
-        plantuml.append("  created_at : TIMESTAMP\n");
-        plantuml.append("}\n\n");
-
-        plantuml.append("entity \"medication_logs\" as medication_logs {\n");
-        plantuml.append("  * id : UUID PK\n");
-        plantuml.append("  * medication_id : UUID FK\n");
-        plantuml.append("  * scheduled_time : TIMESTAMP\n");
-        plantuml.append("  actual_time : TIMESTAMP\n");
-        plantuml.append("  * status : ENUM\n");
-        plantuml.append("  notes : TEXT\n");
-        plantuml.append("  created_at : TIMESTAMP\n");
-        plantuml.append("}\n\n");
-
         // Define relationships
         plantuml.append("' Relationships\n");
         plantuml.append("users ||--|| user_profiles : \"has\"\n");
@@ -451,10 +379,7 @@ public class ERDiagramGenerator {
         plantuml.append("users ||--o{ exercise_logs : \"logs\"\n");
         plantuml.append("users ||--o{ water_logs : \"logs\"\n");
         plantuml.append("users ||--o{ daily_nutrition_summaries : \"has\"\n");
-        plantuml.append("users ||--o{ medications : \"takes\"\n");
-        plantuml.append("medications ||--o{ medication_schedules : \"has\"\n");
-        plantuml.append("medications ||--o{ medication_logs : \"has\"\n");
-        
+
         plantuml.append("@enduml\n");
 
         writeToFile(filename, plantuml.toString());
@@ -647,10 +572,7 @@ public class ERDiagramGenerator {
         sql.append("CREATE TYPE health_condition_enum AS ENUM ('NONE', 'DIABETES', 'HYPERTENSION', 'HEART_DISEASE', 'OTHER');\n");
         sql.append("CREATE TYPE message_role_enum AS ENUM ('USER', 'BOT');\n");
         sql.append("CREATE TYPE meal_type_enum AS ENUM ('BREAKFAST', 'LUNCH', 'DINNER', 'SNACK');\n");
-        sql.append("CREATE TYPE exercise_intensity_enum AS ENUM ('LOW', 'MODERATE', 'HIGH', 'VIGOROUS');\n");
-        sql.append("CREATE TYPE medication_type_enum AS ENUM ('TABLET', 'CAPSULE', 'LIQUID', 'INJECTION', 'TOPICAL', 'OTHER');\n");
-        sql.append("CREATE TYPE frequency_type_enum AS ENUM ('ONCE_DAILY', 'TWICE_DAILY', 'THREE_TIMES_DAILY', 'FOUR_TIMES_DAILY', 'AS_NEEDED', 'CUSTOM');\n");
-        sql.append("CREATE TYPE log_status_enum AS ENUM ('TAKEN', 'MISSED', 'SKIPPED', 'PENDING');\n\n");
+        sql.append("CREATE TYPE exercise_intensity_enum AS ENUM ('LOW', 'MODERATE', 'HIGH', 'VIGOROUS');\n\n");
         
         // Add all table creation statements
         sql.append("-- Create tables\n\n");
