@@ -1,0 +1,200 @@
+@startuml HealVerse_ERD
+hide circle
+skinparam linetype ortho
+
+entity "users" as users {
+  * id : bigint <<PK>>
+  --
+  * username : varchar <<UK>>
+  password : varchar
+  email : varchar <<UK>>
+  google_id : varchar <<UK>>
+  profile_image : varchar
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "user_profiles" as user_profiles {
+  * id : bigint <<PK>>
+  --
+  * user_id : bigint <<FK>>
+  * gender : gender
+  * age : int
+  * height_cm : decimal(5,2)
+  * current_weight_kg : decimal(5,2)
+  * target_weight_kg : decimal(5,2)
+  * activity_level : activity_level
+  * goal : goal
+  address : varchar
+  weight_loss_speed : weight_loss_speed
+  dietary_restriction : dietary_restriction
+  health_conditions : health_condition
+  other_health_condition_description : varchar
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "conversations" as conversations {
+  * id : varchar <<PK>>
+  --
+  * user_id : bigint <<FK>>
+  title : varchar(500)
+  * created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "messages" as messages {
+  * id : bigint <<PK>>
+  --
+  * conversation_id : varchar <<FK>>
+  * content : text
+  * role : message_role
+  * created_at : timestamp
+}
+
+entity "diet_plans" as diet_plans {
+  * id : bigint <<PK>>
+  --
+  * user_id : bigint <<FK>>
+  * plan_date : date
+  * total_calories : decimal(6,2)
+  * total_protein : decimal(5,2)
+  * total_carbs : decimal(5,2)
+  * total_fat : decimal(5,2)
+  is_generated : boolean
+  created_at : timestamp
+}
+
+entity "meals" as meals {
+  * id : bigint <<PK>>
+  --
+  * diet_plan_id : bigint <<FK>>
+  * meal_type : meal_type
+  * meal_name : varchar
+  * calories : decimal(6,2)
+  * protein : decimal(5,2)
+  * carbs : decimal(5,2)
+  * fat : decimal(5,2)
+  preparation_time_minutes : int
+  instructions : text
+  health_benefits : text
+  ingredients : json
+  created_at : timestamp
+}
+
+entity "food_logs" as food_logs {
+  * id : bigint <<PK>>
+  --
+  user_id : bigint <<FK>>
+  meal_type : meal_type
+  meal_name : varchar
+  image_url : varchar
+  image_description : varchar
+  logged_at : timestamp
+  created_at : timestamp
+  is_from_camera : boolean
+}
+
+entity "food_items" as food_items {
+  * id : bigint <<PK>>
+  --
+  food_log_id : bigint <<FK>>
+  name : varchar
+  quantity : double
+  unit : varchar
+  calories : double
+  protein : double
+  fat : double
+  carbs : double
+}
+
+entity "exercise_logs" as exercise_logs {
+  * id : bigint <<PK>>
+  --
+  * user_id : bigint <<FK>>
+  * exercise_name : varchar
+  * duration_minutes : int
+  * intensity : exercise_intensity
+  * calories_burned : decimal(6,2)
+  * logged_at : timestamp
+  created_at : timestamp
+}
+
+entity "water_logs" as water_logs {
+  * id : bigint <<PK>>
+  --
+  * user_id : bigint <<FK>>
+  * amount_ml : decimal(8,2)
+  * logged_at : timestamp
+  created_at : timestamp
+}
+
+entity "daily_nutrition_summaries" as daily_nutrition_summaries {
+  * id : bigint <<PK>>
+  --
+  * user_id : bigint <<FK>>
+  * date : date
+  * target_calories : decimal(6,2)
+  * target_protein : decimal(5,2)
+  * target_carbs : decimal(5,2)
+  * target_fat : decimal(5,2)
+  consumed_calories : decimal(6,2)
+  consumed_protein : decimal(5,2)
+  consumed_carbs : decimal(5,2)
+  consumed_fat : decimal(5,2)
+  calories_burned : decimal(6,2)
+  water_consumed_ml : decimal(8,2)
+  target_water_ml : decimal(8,2)
+  remaining_calories : decimal(6,2)
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "user_streaks" as user_streaks {
+  * id : bigint <<PK>>
+  --
+  * user_id : bigint <<FK>> <<UK>>
+  current_login_streak : int
+  longest_login_streak : int
+  last_login_date : date
+  total_points : int
+  * created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "daily_points" as daily_points {
+  * id : bigint <<PK>>
+  --
+  * user_id : bigint <<FK>>
+  * date : date
+  * login_points : int
+  * diet_points : int
+  * total_points : int
+  * created_at : timestamp
+}
+
+entity "points_history" as points_history {
+  * id : bigint <<PK>>
+  --
+  * user_id : bigint <<FK>>
+  * points_earned : int
+  * reason : varchar(100)
+  description : text
+  * date : date
+  * created_at : timestamp
+}
+
+users ||--|| user_profiles : has profile
+users ||--o{ conversations : has
+conversations ||--o{ messages : contains
+users ||--o{ diet_plans : has
+diet_plans ||--o{ meals : contains
+users ||--o{ food_logs : logs
+food_logs ||--o{ food_items : contains
+users ||--o{ exercise_logs : logs
+users ||--o{ water_logs : logs
+users ||--o{ daily_nutrition_summaries : has
+users ||..|| user_streaks : streak (logical)
+users ||..o{ daily_points : earns (logical)
+users ||..o{ points_history : earns (logical)
+@enduml

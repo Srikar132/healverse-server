@@ -1,0 +1,262 @@
+// HealVerse schema - paste into https://dbdiagram.io/d
+
+Project HealVerse {
+  database_type: 'PostgreSQL'
+}
+
+Enum gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+Enum activity_level {
+  SEDENTARY
+  LIGHTLY_ACTIVE
+  MODERATELY_ACTIVE
+  VERY_ACTIVE
+  EXTREMELY_ACTIVE
+}
+
+Enum goal {
+  LOSE_WEIGHT
+  MAINTAIN_WEIGHT
+  GAIN_WEIGHT
+  BUILD_MUSCLE
+  IMPROVE_FITNESS
+}
+
+Enum weight_loss_speed {
+  SLOW
+  MODERATE
+  FAST
+  VERY_FAST
+}
+
+Enum dietary_restriction {
+  NON_VEGETARIAN
+  VEGETARIAN
+  VEGAN
+  PESCATARIAN
+  KETO
+  PALEO
+  MEDITERRANEAN
+  GLUTEN_FREE
+  DAIRY_FREE
+  LOW_CARB
+  LOW_FAT
+}
+
+Enum health_condition {
+  NONE
+  DIABETES
+  HYPERTENSION
+  HEART_DISEASE
+  THYROID
+  PCOS
+  ARTHRITIS
+  DIGESTIVE_ISSUES
+  ALLERGIES
+  OTHER
+}
+
+Enum meal_type {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACK
+}
+
+Enum exercise_intensity {
+  LOW
+  MODERATE
+  HIGH
+  VERY_HIGH
+}
+
+Enum message_role {
+  USER
+  BOT
+}
+
+Table users {
+  id bigint [pk]
+  username varchar [unique, not null]
+  password varchar
+  email varchar [unique]
+  google_id varchar [unique]
+  profile_image varchar
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table user_profiles {
+  id bigint [pk]
+  user_id bigint [not null]
+  gender gender [not null]
+  age int [not null]
+  height_cm decimal(5,2) [not null]
+  current_weight_kg decimal(5,2) [not null]
+  target_weight_kg decimal(5,2) [not null]
+  activity_level activity_level [not null]
+  goal goal [not null]
+  address varchar
+  weight_loss_speed weight_loss_speed
+  dietary_restriction dietary_restriction
+  health_conditions health_condition
+  other_health_condition_description varchar
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table conversations {
+  id varchar [pk]
+  user_id bigint [not null]
+  title varchar(500)
+  created_at timestamp [not null]
+  updated_at timestamp
+}
+
+Table messages {
+  id bigint [pk]
+  conversation_id varchar [not null]
+  content text [not null]
+  role message_role [not null]
+  created_at timestamp [not null]
+}
+
+Table diet_plans {
+  id bigint [pk]
+  user_id bigint [not null]
+  plan_date date [not null]
+  total_calories decimal(6,2) [not null]
+  total_protein decimal(5,2) [not null]
+  total_carbs decimal(5,2) [not null]
+  total_fat decimal(5,2) [not null]
+  is_generated boolean
+  created_at timestamp
+}
+
+Table meals {
+  id bigint [pk]
+  diet_plan_id bigint [not null]
+  meal_type meal_type [not null]
+  meal_name varchar [not null]
+  calories decimal(6,2) [not null]
+  protein decimal(5,2) [not null]
+  carbs decimal(5,2) [not null]
+  fat decimal(5,2) [not null]
+  preparation_time_minutes int
+  instructions text
+  health_benefits text
+  ingredients json
+  created_at timestamp
+}
+
+Table food_logs {
+  id bigint [pk]
+  user_id bigint
+  meal_type meal_type
+  meal_name varchar
+  image_url varchar
+  image_description varchar
+  logged_at timestamp
+  created_at timestamp
+  is_from_camera boolean
+}
+
+Table food_items {
+  id bigint [pk]
+  food_log_id bigint
+  name varchar
+  quantity double
+  unit varchar
+  calories double
+  protein double
+  fat double
+  carbs double
+}
+
+Table exercise_logs {
+  id bigint [pk]
+  user_id bigint [not null]
+  exercise_name varchar [not null]
+  duration_minutes int [not null]
+  intensity exercise_intensity [not null]
+  calories_burned decimal(6,2) [not null]
+  logged_at timestamp [not null]
+  created_at timestamp
+}
+
+Table water_logs {
+  id bigint [pk]
+  user_id bigint [not null]
+  amount_ml decimal(8,2) [not null]
+  logged_at timestamp [not null]
+  created_at timestamp
+}
+
+Table daily_nutrition_summaries {
+  id bigint [pk]
+  user_id bigint [not null]
+  date date [not null]
+  target_calories decimal(6,2) [not null]
+  target_protein decimal(5,2) [not null]
+  target_carbs decimal(5,2) [not null]
+  target_fat decimal(5,2) [not null]
+  consumed_calories decimal(6,2)
+  consumed_protein decimal(5,2)
+  consumed_carbs decimal(5,2)
+  consumed_fat decimal(5,2)
+  calories_burned decimal(6,2)
+  water_consumed_ml decimal(8,2)
+  target_water_ml decimal(8,2)
+  remaining_calories decimal(6,2)
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table user_streaks {
+  id bigint [pk]
+  user_id bigint [unique, not null]
+  current_login_streak int
+  longest_login_streak int
+  last_login_date date
+  total_points int
+  created_at timestamp [not null]
+  updated_at timestamp
+}
+
+Table daily_points {
+  id bigint [pk]
+  user_id bigint [not null]
+  date date [not null]
+  login_points int [not null]
+  diet_points int [not null]
+  total_points int [not null]
+  created_at timestamp [not null]
+}
+
+Table points_history {
+  id bigint [pk]
+  user_id bigint [not null]
+  points_earned int [not null]
+  reason varchar(100) [not null]
+  description text
+  date date [not null]
+  created_at timestamp [not null]
+}
+
+Ref: user_profiles.user_id - users.id
+Ref: conversations.user_id > users.id
+Ref: messages.conversation_id > conversations.id
+Ref: diet_plans.user_id > users.id
+Ref: meals.diet_plan_id > diet_plans.id
+Ref: food_logs.user_id > users.id
+Ref: food_items.food_log_id > food_logs.id
+Ref: exercise_logs.user_id > users.id
+Ref: water_logs.user_id > users.id
+Ref: daily_nutrition_summaries.user_id > users.id
+Ref: user_streaks.user_id - users.id // logical only, no JPA relation
+Ref: daily_points.user_id > users.id // logical only, no JPA relation
+Ref: points_history.user_id > users.id // logical only, no JPA relation
