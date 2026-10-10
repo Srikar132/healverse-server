@@ -7,13 +7,10 @@ import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
 
 @Component
 public class JwtService {
@@ -45,12 +42,8 @@ public class JwtService {
     }
 
     public String generateJwtToken(User user) {
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("userId", user.getId());
-
         long now = System.currentTimeMillis();
         return Jwts.builder()
-                .claims(claims)
                 .subject(user.getUsername())
                 .issuedAt(new Date(now))
                 .expiration(new Date(now + expirationMs))
@@ -67,18 +60,11 @@ public class JwtService {
                 .getPayload();
     }
 
+    /**
+     * Returns the token's subject. Parsing verifies the signature and expiry, so a returned value
+     * means the token is valid; anything else throws a JwtException.
+     */
     public String extractUsername(String token) {
         return parseClaims(token).getSubject();
-    }
-
-    public Long extractUserId(String token) {
-        Object userIdObj = parseClaims(token).get("userId");
-        return userIdObj != null ? Long.valueOf(userIdObj.toString()) : null;
-    }
-
-    public boolean isTokenValid(String token, UserDetails userDetails) {
-        Claims claims = parseClaims(token);
-        return claims.getSubject().equals(userDetails.getUsername())
-                && claims.getExpiration().after(new Date());
     }
 }

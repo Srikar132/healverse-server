@@ -10,7 +10,7 @@ import java.util.Collections;
 
 public class UserPrinciple implements UserDetails {
 
-    private User user = null;
+    private final User user;
 
     public UserPrinciple(User user) {
         this.user = user;
@@ -20,6 +20,10 @@ public class UserPrinciple implements UserDetails {
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return Collections.singleton(new SimpleGrantedAuthority("USER"));
+    }
+
+    public User getUser() {
+        return user;
     }
 
     public Long getUserId() {
@@ -34,25 +38,5 @@ public class UserPrinciple implements UserDetails {
     @Override
     public String getUsername() {
         return user.getUsername();
-    }
-
-    @Override
-    public boolean isAccountNonExpired() {
-        return UserDetails.super.isAccountNonExpired();
-    }
-
-    @Override
-    public boolean isAccountNonLocked() {
-        return UserDetails.super.isAccountNonLocked();
-    }
-
-    @Override
-    public boolean isCredentialsNonExpired() {
-        return UserDetails.super.isCredentialsNonExpired();
-    }
-
-    @Override
-    public boolean isEnabled() {
-        return UserDetails.super.isEnabled();
     }
 }

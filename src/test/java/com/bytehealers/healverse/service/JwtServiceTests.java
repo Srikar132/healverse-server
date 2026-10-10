@@ -32,12 +32,11 @@ class JwtServiceTests {
     }
 
     @Test
-    void roundTripsUsernameAndUserId() {
+    void roundTripsUsername() {
         JwtService service = serviceWith(SECRET_A, 60_000);
         String token = service.generateJwtToken(user());
 
         assertEquals("tester", service.extractUsername(token));
-        assertEquals(7L, service.extractUserId(token));
     }
 
     @Test

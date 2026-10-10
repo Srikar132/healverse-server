@@ -49,18 +49,17 @@ public class JwtFilter extends OncePerRequestFilter {
 
     private void authenticate(String jwt, HttpServletRequest request) {
         try {
+            // Signature and expiry are verified while the subject is extracted
             String username = jwtService.extractUsername(jwt);
             UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-            if (jwtService.isTokenValid(jwt, userDetails)) {
-                UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(
-                                userDetails, null,
-                                userDetails.getAuthorities()
-                        );
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
-            }
+            UsernamePasswordAuthenticationToken authToken =
+                    new UsernamePasswordAuthenticationToken(
+                            userDetails, null,
+                            userDetails.getAuthorities()
+                    );
+            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            SecurityContextHolder.getContext().setAuthentication(authToken);
         } catch (JwtException | IllegalArgumentException | UsernameNotFoundException ex) {
             logger.debug("Rejected bearer token: " + ex.getClass().getSimpleName());
             SecurityContextHolder.clearContext();

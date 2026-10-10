@@ -81,33 +81,14 @@ public class UserService {
             profile.setHealthCondition(dto.getHealthConditions());
         }
         profile.setOtherHealthConditionDescription(dto.getOtherHealthConditionDescription());
-        profile.setAddress(dto.getAddress());
+        // Optional fields keep their stored value when the client omits them
+        if (dto.getAddress() != null) {
+            profile.setAddress(dto.getAddress());
+        }
     }
 
     public Optional<User> findByUsername(String username) {
         return userRepository.findByUsername(username);
-    }
-
-    public boolean existsByUsername(String username) {
-        return userRepository.existsByUsername(username);
-    }
-
-    public boolean existsByEmail(String email) {
-        return userRepository.existsByEmail(email);
-    }
-
-    public Optional<User> findByEmail(String email) {
-        return userRepository.findByEmail(email);
-    }
-
-    public Optional<User> findByGoogleId(String googleId) {
-        return userRepository.findByGoogleId(googleId);
-    }
-
-    public UserProfile getUserProfile(String username) {
-        return userRepository.findByUsername(username)
-                .map(User::getProfile)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
     }
 
     public UserProfile createUserProfile(Long userId, @Valid UserProfileDTO profileDTO) {
@@ -116,17 +97,7 @@ public class UserService {
                 
         UserProfile profile = new UserProfile();
         profile.setUser(user);
-        profile.setGender(profileDTO.getGender());
-        profile.setAge(profileDTO.getAge());
-        profile.setHeightCm(profileDTO.getHeightCm());
-        profile.setCurrentWeightKg(profileDTO.getCurrentWeightKg());
-        profile.setTargetWeightKg(profileDTO.getTargetWeightKg());
-        profile.setActivityLevel(profileDTO.getActivityLevel());
-        profile.setGoal(profileDTO.getGoal());
-        profile.setWeightLossSpeed(profileDTO.getWeightLossSpeed());
-        profile.setDietaryRestriction(profileDTO.getDietaryRestriction());
-        profile.setHealthCondition(profileDTO.getHealthConditions());
-        profile.setOtherHealthConditionDescription(profileDTO.getOtherHealthConditionDescription());
+        applyProfile(profile, profileDTO);
 
         user.setProfile(profile);
         return userProfileService.createProfile(profile);
@@ -148,19 +119,8 @@ public class UserService {
         UserProfile existingProfile = userProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("UserProfile", "userId", userId));
                 
-        // Update profile fields
-        existingProfile.setGender(profileDTO.getGender());
-        existingProfile.setAge(profileDTO.getAge());
-        existingProfile.setHeightCm(profileDTO.getHeightCm());
-        existingProfile.setCurrentWeightKg(profileDTO.getCurrentWeightKg());
-        existingProfile.setTargetWeightKg(profileDTO.getTargetWeightKg());
-        existingProfile.setActivityLevel(profileDTO.getActivityLevel());
-        existingProfile.setGoal(profileDTO.getGoal());
-        existingProfile.setWeightLossSpeed(profileDTO.getWeightLossSpeed());
-        existingProfile.setDietaryRestriction(profileDTO.getDietaryRestriction());
-        existingProfile.setHealthCondition(profileDTO.getHealthConditions());
-        existingProfile.setOtherHealthConditionDescription(profileDTO.getOtherHealthConditionDescription());
-        
+        applyProfile(existingProfile, profileDTO);
+
         return userProfileService.updateProfile(existingProfile);
     }
 
