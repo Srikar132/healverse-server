@@ -1,20 +1,22 @@
 package com.bytehealers.healverse.controller;
 
+import com.bytehealers.healverse.dto.request.LoginRequest;
+import com.bytehealers.healverse.dto.request.RegisterRequest;
 import com.bytehealers.healverse.dto.response.ApiResponse;
 import com.bytehealers.healverse.exception.ResourceNotFoundException;
 import com.bytehealers.healverse.model.User;
-import com.bytehealers.healverse.model.UserProfile;
 import com.bytehealers.healverse.service.GamificationService;
 import com.bytehealers.healverse.service.JwtService;
+import com.bytehealers.healverse.service.LoginAttemptService;
 import com.bytehealers.healverse.service.UserService;
+import com.bytehealers.healverse.util.UserContext;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import lombok.Setter;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -29,13 +31,15 @@ public class AuthController {
     private final UserService userService;
     private final JwtService jwtService;
     private final GamificationService gamificationService;
+    private final LoginAttemptService loginAttemptService;
+    private final UserContext userContext;
 
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<Map<String, Object>>> register(
             @RequestBody @Valid RegisterRequest request) {
 
-        User registeredUser = userService.registerUser(request.getUser(), request.getProfile());
+        User registeredUser = userService.registerUser(request);
         String token = jwtService.generateJwtToken(registeredUser);
 
         gamificationService.recordDailyLogin(registeredUser.getId());
@@ -53,10 +57,22 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> login(@RequestBody @Valid LoginRequest request) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
-        );
+    public ResponseEntity<ApiResponse<Map<String, Object>>> login(
+            @RequestBody @Valid LoginRequest request,
+            HttpServletRequest httpRequest) {
+
+        String clientAddress = httpRequest.getRemoteAddr();
+        loginAttemptService.checkAllowed(clientAddress, request.getUsername());
+
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
+            );
+        } catch (AuthenticationException e) {
+            loginAttemptService.recordFailure(clientAddress, request.getUsername());
+            throw e;
+        }
+        loginAttemptService.recordSuccess(clientAddress, request.getUsername());
 
         User user = userService.findByUsername(request.getUsername())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
@@ -73,18 +89,18 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("Login successful", responseData));
     }
 
+    /**
+     * Validates the presented token (the JWT filter has already done so) and returns the current user.
+     * The same token is echoed back rather than re-issued: minting a fresh token on every call would
+     * let a token be refreshed forever.
+     */
     @GetMapping("/check-auth")
     public ResponseEntity<ApiResponse<Map<String, Object>>> checkAuth(@RequestHeader("Authorization") String authHeader) {
-        String token = authHeader.replace("Bearer ", "");
-        String username = jwtService.extractUsername(token);
-
-        User user = userService.findByUsername(username)
+        User user = userService.findById(userContext.getCurrentUserId())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        String newToken = jwtService.generateJwtToken(user);
-
         Map<String, Object> responseData = new HashMap<>();
-        responseData.put("token", newToken);
+        responseData.put("token", authHeader.substring("Bearer ".length()));
         responseData.put("user", createUserResponse(user));
 
         return ResponseEntity.ok(ApiResponse.success("Auth check successful", responseData));
@@ -100,23 +116,5 @@ public class AuthController {
         userMap.put("googleId", user.getGoogleId());
         userMap.put("profile", user.getProfile());
         return userMap;
-    }
-
-
-    @Setter
-    @Getter
-    public static class RegisterRequest {
-        // Getters and setters
-        private User user;
-        private UserProfile profile;
-
-    }
-
-    @Setter
-    @Getter
-    public static class LoginRequest {
-        // Getters and setters
-        private String username;
-        private String password;
     }
 }

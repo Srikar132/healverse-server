@@ -1,6 +1,8 @@
 package com.bytehealers.healverse.service;
 
 import com.bytehealers.healverse.dto.UserProfileDTO;
+import com.bytehealers.healverse.dto.request.RegisterRequest;
+import com.bytehealers.healverse.exception.DuplicateResourceException;
 import com.bytehealers.healverse.exception.ResourceNotFoundException;
 import com.bytehealers.healverse.model.User;
 import com.bytehealers.healverse.model.UserProfile;
@@ -31,23 +33,55 @@ public class UserService {
 
 
     @Transactional
-    public User registerUser(User user, UserProfile profile) {
-        // Encode password if provided
-        if (user.getPassword() != null && !user.getPassword().isEmpty()) {
-            user.setPassword(passwordEncoder.encode(user.getPassword()));
+    public User registerUser(RegisterRequest request) {
+        RegisterRequest.Credentials credentials = request.getUser();
+        String username = credentials.getUsername().trim();
+        String email = (credentials.getEmail() == null || credentials.getEmail().isBlank())
+                ? null
+                : credentials.getEmail().trim();
+
+        if (userRepository.existsByUsername(username)) {
+            throw new DuplicateResourceException("Username is already taken");
+        }
+        if (email != null && userRepository.existsByEmail(email)) {
+            throw new DuplicateResourceException("Email is already registered");
         }
 
-        // Save user first
+        // Always a brand-new entity: nothing from the request can address an existing row
+        User user = new User();
+        user.setUsername(username);
+        user.setEmail(email);
+        user.setPassword(passwordEncoder.encode(credentials.getPassword()));
+
         User savedUser = userRepository.save(user);
 
-        // Set the user reference in profile and save
-        if (profile != null) {
+        UserProfileDTO profileDTO = request.getProfile();
+        if (profileDTO != null) {
+            UserProfile profile = new UserProfile();
             profile.setUser(savedUser);
+            applyProfile(profile, profileDTO);
             userProfileService.createProfile(profile);
             savedUser.setProfile(profile);
         }
 
         return savedUser;
+    }
+
+    private void applyProfile(UserProfile profile, UserProfileDTO dto) {
+        profile.setGender(dto.getGender());
+        profile.setAge(dto.getAge());
+        profile.setHeightCm(dto.getHeightCm());
+        profile.setCurrentWeightKg(dto.getCurrentWeightKg());
+        profile.setTargetWeightKg(dto.getTargetWeightKg());
+        profile.setActivityLevel(dto.getActivityLevel());
+        profile.setGoal(dto.getGoal());
+        profile.setWeightLossSpeed(dto.getWeightLossSpeed());
+        profile.setDietaryRestriction(dto.getDietaryRestriction());
+        if (dto.getHealthConditions() != null) {
+            profile.setHealthCondition(dto.getHealthConditions());
+        }
+        profile.setOtherHealthConditionDescription(dto.getOtherHealthConditionDescription());
+        profile.setAddress(dto.getAddress());
     }
 
     public Optional<User> findByUsername(String username) {

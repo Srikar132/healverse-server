@@ -45,12 +45,10 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/auth/register",
                                 "/auth/login",
-                                "/user/me",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui.html",
-                                "/webjars/**",
-                                "/api/voice-chat/**"
+                                "/webjars/**"
                         ).permitAll()
 
                         .anyRequest().authenticated()

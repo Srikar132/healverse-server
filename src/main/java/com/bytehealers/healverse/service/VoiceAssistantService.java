@@ -44,7 +44,8 @@ public class VoiceAssistantService {
     }
 
     public TextResponse processAIRequest(String text, String sessionId) {
-        logger.info("Processing AI request for session: {} with text: {}", sessionId, text);
+        // User text can contain health details, so only its size is logged
+        logger.info("Processing AI request for session: {} (text length: {})", sessionId, text.length());
 
         try {
             long startTime = System.currentTimeMillis();

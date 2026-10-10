@@ -35,11 +35,6 @@ public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint 
         errorResponse.put("message", "Authentication required to access this resource");
         errorResponse.put("path", request.getRequestURI());
 
-        // Optional: Include more details for debugging (remove in production)
-        if (authException.getMessage() != null) {
-            errorResponse.put("details", authException.getMessage());
-        }
-
         response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
     }
 }
