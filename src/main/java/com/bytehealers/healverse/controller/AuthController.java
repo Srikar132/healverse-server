@@ -8,20 +8,24 @@ import com.bytehealers.healverse.model.User;
 import com.bytehealers.healverse.service.GamificationService;
 import com.bytehealers.healverse.service.JwtService;
 import com.bytehealers.healverse.service.LoginAttemptService;
+import com.bytehealers.healverse.service.UserPrinciple;
 import com.bytehealers.healverse.service.UserService;
 import com.bytehealers.healverse.util.UserContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/auth")
@@ -42,7 +46,7 @@ public class AuthController {
         User registeredUser = userService.registerUser(request);
         String token = jwtService.generateJwtToken(registeredUser);
 
-        gamificationService.recordDailyLogin(registeredUser.getId());
+        recordDailyLogin(registeredUser.getId());
 
         Map<String, Object> responseData = new HashMap<>();
         responseData.put("token", token);
@@ -64,8 +68,9 @@ public class AuthController {
         String clientAddress = httpRequest.getRemoteAddr();
         loginAttemptService.checkAllowed(clientAddress, request.getUsername());
 
+        Authentication authentication;
         try {
-            authenticationManager.authenticate(
+            authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
             );
         } catch (AuthenticationException e) {
@@ -74,13 +79,11 @@ public class AuthController {
         }
         loginAttemptService.recordSuccess(clientAddress, request.getUsername());
 
-        User user = userService.findByUsername(request.getUsername())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        User user = ((UserPrinciple) authentication.getPrincipal()).getUser();
 
         String token = jwtService.generateJwtToken(user);
 
-        gamificationService.recordDailyLogin(user.getId());
-
+        recordDailyLogin(user.getId());
 
         Map<String, Object> responseData = new HashMap<>();
         responseData.put("token", token);
@@ -104,6 +107,15 @@ public class AuthController {
         responseData.put("user", createUserResponse(user));
 
         return ResponseEntity.ok(ApiResponse.success("Auth check successful", responseData));
+    }
+
+    // Daily-login points are a side effect: a failure there must never block signing in or registering.
+    private void recordDailyLogin(Long userId) {
+        try {
+            gamificationService.recordDailyLogin(userId);
+        } catch (Exception e) {
+            log.warn("Daily login points failed for userId {}: {}", userId, e.getMessage());
+        }
     }
 
     private Map<String, Object> createUserResponse(User user) {

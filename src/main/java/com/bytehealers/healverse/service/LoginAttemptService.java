@@ -13,6 +13,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  * In-memory brute-force throttle for /auth/login. Failures are counted per client address + username
  * (not per username alone, so an attacker cannot lock a victim out), and the counter expires on its own.
  * Single-node only; move to a shared store if the API is ever scaled out.
+ * <p>
+ * The client address is {@code getRemoteAddr()}. Behind a reverse proxy or load balancer that is the
+ * proxy's address, so every client would share one counter per username: enable
+ * {@code server.forward-headers-strategy} (only when the proxy is trusted to set X-Forwarded-For).
  */
 @Service
 public class LoginAttemptService {
