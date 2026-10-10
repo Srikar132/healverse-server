@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -53,6 +54,11 @@ public class GlobalExceptionHandler {
     // Catch ALL unhandled exceptions here (like Express catch-all). Details go to the log, not the client.
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Object> handleAllExceptions(Exception ex) {
+        // Framework exceptions already carry the right status (unknown route -> 404, wrong method -> 405, ...)
+        if (ex instanceof ErrorResponse errorResponse) {
+            HttpStatus status = HttpStatus.valueOf(errorResponse.getStatusCode().value());
+            return buildErrorResponse(status, status.getReasonPhrase());
+        }
         logger.error("Unhandled exception", ex);
         return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error");
     }

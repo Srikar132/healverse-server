@@ -173,9 +173,4 @@ public class VoiceAssistantController {
             return ResponseEntity.badRequest().body("Invalid session id");
         }
     }
-
-    @GetMapping("/health")
-    public ResponseEntity<String> health() {
-        return ResponseEntity.ok("AI Voice Assistant is running!");
-    }
 }

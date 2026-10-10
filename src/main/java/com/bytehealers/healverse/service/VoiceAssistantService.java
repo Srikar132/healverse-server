@@ -127,8 +127,4 @@ public class VoiceAssistantService {
         conversationHistory.clear();
         logger.info("Cleared all conversation histories");
     }
-
-    public int getActiveSessionsCount() {
-        return conversationHistory.size();
-    }
 }

@@ -130,10 +130,26 @@ class AuthSecurityTests {
     void voiceChatAcceptsValidToken() throws Exception {
         String token = data(register(registerBody(uniqueUsername("voice"), "valid-pass"), 200)).get("token").asText();
 
-        mockMvc.perform(get("/api/voice-chat/health").header("Authorization", "Bearer " + token))
+        // Clearing the caller's own (empty) session succeeds
+        mockMvc.perform(delete("/api/voice-chat/default").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk());
         mockMvc.perform(delete("/api/voice-chat/bad%20session").header("Authorization", "Bearer " + token))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void removedRoutesAreClientErrorsNotServerErrors() throws Exception {
+        String token = data(register(registerBody(uniqueUsername("route"), "valid-pass"), 200)).get("token").asText();
+
+        // Removed ad-hoc health / OpenAI test endpoints (use /actuator/health instead). Some of these paths
+        // now fall under /api/conversations/{id}, so 404 or 405 are both correct; a 500 is not.
+        for (String path : new String[]{"/api/voice-chat/health", "/api/conversations/health", "/api/conversations/test"}) {
+            mockMvc.perform(get(path).header("Authorization", "Bearer " + token))
+                    .andExpect(status().is4xxClientError());
+        }
+
+        mockMvc.perform(get("/api/no-such-route").header("Authorization", "Bearer " + token))
+                .andExpect(status().isNotFound());
     }
 
     @Test
