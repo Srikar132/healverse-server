@@ -92,26 +92,6 @@ public class ChatService {
         return mapToMessageResponse(botMessage);
     }
 
-    /**
-     * Test OpenAI connection with a simple request
-     */
-    public String testOpenAIConnection() {
-        try {
-            log.info("Testing OpenAI connection...");
-            
-            String response = chatClient.prompt()
-                    .user("Say 'Hello, OpenAI connection is working!'")
-                    .call()
-                    .content();
-            
-            log.info("OpenAI test successful: {}", response);
-            return response;
-        } catch (Exception e) {
-            log.error("OpenAI test failed", e);
-            throw new RuntimeException("OpenAI connection failed: " + e.getMessage(), e);
-        }
-    }
-
     public List<MessageResponse> getMessages(String conversationId, Long userId) {
         // Verify conversation belongs to user
         if (!conversationRepository.existsByIdAndUserId(conversationId, userId)) {

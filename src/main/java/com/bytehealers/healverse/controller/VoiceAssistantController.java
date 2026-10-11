@@ -17,6 +17,7 @@ import jakarta.validation.Valid;
 
 import java.util.Base64;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("/api/voice-chat")
@@ -24,6 +25,8 @@ import java.util.Map;
 public class VoiceAssistantController {
 
     private static final Logger logger = LoggerFactory.getLogger(VoiceAssistantController.class);
+
+    private static final Pattern SESSION_ID_PATTERN = Pattern.compile("[A-Za-z0-9_-]{1,64}");
 
     private final VoiceAssistantService voiceAssistantService;
     private final UserContext userContext;
@@ -33,21 +36,34 @@ public class VoiceAssistantController {
         this.userContext = userContext;
     }
 
+    /**
+     * Conversation history is keyed by authenticated user + client session id, so one user can never
+     * read, extend or clear another user's conversation. A missing id falls back to the user's
+     * "default" session.
+     */
+    private String sessionKey(String sessionId) {
+        String clientSession = (sessionId == null || sessionId.isBlank()) ? "default" : sessionId.trim();
+        if (!SESSION_ID_PATTERN.matcher(clientSession).matches()) {
+            throw new IllegalArgumentException("Invalid session id");
+        }
+        return userContext.getCurrentUserId() + ":" + clientSession;
+    }
+
     @PostMapping("/ask-ai")
     public ResponseEntity<TextResponse> askAI(
             @Valid @RequestBody TextRequest request,
             @RequestHeader(value = "X-Session-ID", required = false) String sessionId) {
 
-        logger.info("Received ask-ai request for session: {}", sessionId);
+        logger.info("Received ask-ai request");
 
         try {
-//            Long userId = userContext.getCurrentUserId();
-            // Use a default session if none provided
-            String activeSessionId = sessionId != null ? sessionId : "default";
+            String sessionKey = sessionKey(sessionId);
 
-            TextResponse response = voiceAssistantService.processAIRequest(request.getText(), activeSessionId);
+            TextResponse response = voiceAssistantService.processAIRequest(request.getText(), sessionKey);
             return ResponseEntity.ok(response);
 
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new TextResponse(null, "Invalid session id"));
         } catch (Exception e) {
             logger.error("Error in askAI endpoint: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -82,14 +98,12 @@ public class VoiceAssistantController {
             @Valid @RequestBody TextRequest request,
             @RequestHeader(value = "X-Session-ID", required = false) String sessionId) {
 
-        logger.info("Received voice-chat request for session: {}", sessionId);
+        logger.info("Received voice-chat request");
 
         try {
-//            Long userId =  userContext.getCurrentUserId();
-            // Use a default session if none provided
-            String activeSessionId = sessionId != null ? sessionId : "default";
+            String sessionKey = sessionKey(sessionId);
 
-            byte[] audioBytes = voiceAssistantService.processVoiceChat(request.getText(), activeSessionId );
+            byte[] audioBytes = voiceAssistantService.processVoiceChat(request.getText(), sessionKey);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.valueOf("audio/mpeg"));
@@ -98,6 +112,10 @@ public class VoiceAssistantController {
 
             return ResponseEntity.ok().headers(headers).body(audioBytes);
 
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(new TextResponse(null, "Invalid session id"));
         } catch (Exception e) {
             logger.error("Error in voiceChat endpoint: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -111,14 +129,13 @@ public class VoiceAssistantController {
             @Valid @RequestBody TextRequest request,
             @RequestHeader(value = "X-Session-ID", required = false) String sessionId) {
 
-        logger.info("Received voice-chat-with-text request for session: {}", sessionId);
+        logger.info("Received voice-chat-with-text request");
 
         try {
-//            Long userId = userContext.getCurrentUserId();
-            String activeSessionId = sessionId != null ? sessionId : "default";
+            String sessionKey = sessionKey(sessionId);
 
             // Get AI response text
-            TextResponse aiResponse = voiceAssistantService.processAIRequest(request.getText(), activeSessionId);
+            TextResponse aiResponse = voiceAssistantService.processAIRequest(request.getText(), sessionKey);
 
             // Generate audio from the response
             byte[] audioBytes = voiceAssistantService.generateSpeech(aiResponse.getResponse());
@@ -135,6 +152,10 @@ public class VoiceAssistantController {
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(response);
 
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(new TextResponse(null, "Invalid session id"));
         } catch (Exception e) {
             logger.error("Error in voiceChatWithText endpoint: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -145,13 +166,11 @@ public class VoiceAssistantController {
 
     @DeleteMapping("/{sessionId}")
     public ResponseEntity<String> clearConversation(@PathVariable String sessionId) {
-        voiceAssistantService.clearConversationHistory(sessionId);
-        return ResponseEntity.ok("Conversation history cleared for session: " + sessionId);
-    }
-
-    @GetMapping("/health")
-    public ResponseEntity<String> health() {
-        int activeSessions = voiceAssistantService.getActiveSessionsCount();
-        return ResponseEntity.ok("AI Voice Assistant is running! Active sessions: " + activeSessions);
+        try {
+            voiceAssistantService.clearConversationHistory(sessionKey(sessionId));
+            return ResponseEntity.ok("Conversation history cleared");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body("Invalid session id");
+        }
     }
 }
