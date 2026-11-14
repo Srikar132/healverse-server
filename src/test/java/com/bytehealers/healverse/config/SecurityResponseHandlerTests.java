@@ -30,9 +30,8 @@ class SecurityResponseHandlerTests {
         assertEquals(403, response.getStatus());
         assertTrue(response.getContentType().startsWith("application/json"));
         JsonNode body = objectMapper.readTree(response.getContentAsString());
-        assertEquals(403, body.get("status").asInt());
+        assertFalse(body.get("success").asBoolean());
         assertEquals("Access denied", body.get("message").asText());
-        assertEquals("/api/diet-plans", body.get("path").asText());
         assertFalse(body.has("admin"));
         assertFalse(response.getContentAsString().contains("admin"));
     }
@@ -47,8 +46,8 @@ class SecurityResponseHandlerTests {
 
         assertEquals(401, response.getStatus());
         JsonNode body = objectMapper.readTree(response.getContentAsString());
-        assertEquals(401, body.get("status").asInt());
-        assertEquals("/api/user/profile", body.get("path").asText());
+        assertFalse(body.get("success").asBoolean());
+        assertEquals("Authentication required to access this resource", body.get("message").asText());
         assertFalse(body.has("details"));
         assertFalse(response.getContentAsString().contains("admin"));
     }

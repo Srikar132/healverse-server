@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.openai.OpenAiChatModel;
@@ -25,6 +26,20 @@ public class AIServiceConfig {
 
     @Value("${app.ai.reasoning-effort:}")
     private String reasoningEffort;
+
+    @Value("${spring.ai.openai.api-key:}")
+    private String apiKey;
+
+    /**
+     * Fail at startup, with a clear message, instead of at the first AI request: Spring would otherwise
+     * boot happily with an unset GROQ_API_KEY and every AI call would later fail with a provider 401.
+     */
+    @PostConstruct
+    void requireApiKey() {
+        if (apiKey.isBlank() || apiKey.startsWith("${")) {
+            throw new IllegalStateException("GROQ_API_KEY is not set. Add it to .env or the environment.");
+        }
+    }
 
     @Value("${app.ai.temperature:0.7}")
     private Double temperature;
