@@ -4,7 +4,7 @@ import com.bytehealers.healverse.dto.GamificationSummaryDTO;
 import com.bytehealers.healverse.exception.ResourceNotFoundException;
 import com.bytehealers.healverse.model.*;
 import com.bytehealers.healverse.repo.*;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,20 +13,17 @@ import java.util.List;
 import java.util.Optional;
 import java.math.BigDecimal;
 
+@RequiredArgsConstructor
 @Service
 public class GamificationService {
 
-    @Autowired
-    private UserStreakRepository streakRepository;
+    private final UserStreakRepository streakRepository;
 
-    @Autowired
-    private DailyPointsRepository dailyPointsRepository;
+    private final DailyPointsRepository dailyPointsRepository;
 
-    @Autowired
-    private PointsHistoryRepository historyRepository;
+    private final PointsHistoryRepository historyRepository;
 
-    @Autowired
-    private DietPlanService dietPlanService;
+    private final DietPlanService dietPlanService;
 
     // === LOGIN STREAK ===
 

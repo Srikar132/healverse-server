@@ -7,8 +7,7 @@ import com.bytehealers.healverse.model.User;
 import com.bytehealers.healverse.repo.ExerciseLogRepository;
 import com.bytehealers.healverse.repo.UserRepository;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -20,22 +19,18 @@ import java.util.Optional;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class ExerciseLoggingService {
 
-    @Autowired
-    private ExerciseLogRepository exerciseLogRepository;
+    private final ExerciseLogRepository exerciseLogRepository;
 
-    @Autowired
-    private CalorieCalculatorService calorieCalculatorService;
+    private final CalorieCalculatorService calorieCalculatorService;
 
 
 
-    @Lazy
-    @Autowired
-    private NutritionSyncService nutritionSyncService;
+    private final NutritionSyncService nutritionSyncService;
 
-    @Autowired
-    private UserRepository userRepository; // 🔥 Added to fetch User by username
+    private final UserRepository userRepository; // 🔥 Added to fetch User by username
 
     public ExerciseLog logExercise(LogExerciseRequest request, Long userId) {
         User user = userRepository.findById(userId)

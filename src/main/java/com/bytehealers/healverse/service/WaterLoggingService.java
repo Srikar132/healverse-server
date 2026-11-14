@@ -8,7 +8,7 @@ import com.bytehealers.healverse.model.WaterLog;
 import com.bytehealers.healverse.repo.UserRepository;
 import com.bytehealers.healverse.repo.WaterLogRepository;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -20,16 +20,14 @@ import java.util.Optional;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class WaterLoggingService {
 
-    @Autowired
-    private WaterLogRepository waterLogRepository;
+    private final WaterLogRepository waterLogRepository;
 
-    @Autowired
-    private NutritionSyncService nutritionSyncService;
+    private final NutritionSyncService nutritionSyncService;
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
 
     public WaterLog logWater(LogWaterRequest request, Long userId) {
         User user = getUserOrThrow(userId); // 🔥 Fetch the user

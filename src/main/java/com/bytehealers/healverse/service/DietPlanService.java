@@ -4,7 +4,7 @@ import com.bytehealers.healverse.exception.BadRequestException;
 import com.bytehealers.healverse.exception.ResourceNotFoundException;
 import com.bytehealers.healverse.model.*;
 import com.bytehealers.healverse.repo.*;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,24 +21,19 @@ import java.math.BigDecimal;
 @Service
 @Transactional
 @Slf4j
+@RequiredArgsConstructor
 public class DietPlanService {
-    @Autowired
-    private DietPlanRepository dietPlanRepository;
+    private final DietPlanRepository dietPlanRepository;
 
-    @Autowired
-    private UserProfileRepository userProfileRepository;
+    private final UserProfileRepository userProfileRepository;
 
-    @Autowired
-    private AIRecommendationService aiRecommendationService;
+    private final AIRecommendationService aiRecommendationService;
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
 
-    @Autowired
-    private MealRepository mealRepository;
+    private final MealRepository mealRepository;
 
-    @Autowired
-    private DailyNutritionSummaryRepository dailyNutritionSummaryRepository;
+    private final DailyNutritionSummaryRepository dailyNutritionSummaryRepository;
 
     /**
      * Generate nutritional adjustment context based on historical data

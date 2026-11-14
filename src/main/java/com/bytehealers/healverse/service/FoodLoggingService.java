@@ -10,7 +10,7 @@ import com.bytehealers.healverse.repo.FoodLogRepository;
 import com.bytehealers.healverse.repo.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.MimeTypeUtils;
@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@RequiredArgsConstructor
 @Service
 @Transactional
 public class FoodLoggingService {
@@ -32,23 +33,17 @@ public class FoodLoggingService {
     // log factory
 
 
-    @Autowired
-    private FoodLogRepository foodLogRepository;
+    private final FoodLogRepository foodLogRepository;
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
 
-    @Autowired
-    private NutritionSyncService  nutritionSyncService;
+    private final NutritionSyncService  nutritionSyncService;
 
-    @Autowired
-    private ChatClient chatClient;
+    private final ChatClient chatClient;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper;
 
-    @Autowired
-    private GamificationService gamificationService;
+    private final GamificationService gamificationService;
 
 
     private static final String FOOD_ANALYSIS_PROMPT = """
