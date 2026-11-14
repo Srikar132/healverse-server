@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HealVerse ER Diagram</title>
+<style>
+  body { margin: 0; padding: 24px; font-family: system-ui, sans-serif; background: #fff; color: #111; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  p { margin: 0 0 16px; color: #555; font-size: 14px; }
+  .mermaid { overflow: auto; }
+</style>
+</head>
+<body>
+<h1>HealVerse database ER diagram</h1>
+<p>Solid lines = JPA relations. Dotted lines = logical only (gamification tables store user_id without a relation).</p>
+<pre class="mermaid">
+erDiagram
+    users {
+        bigint id PK
+        varchar username UK
+        varchar password
+        varchar email UK
+        varchar google_id UK
+        varchar profile_image
+        timestamp created_at
+        timestamp updated_at
+    }
+    user_profiles {
+        bigint id PK
+        bigint user_id FK
+        gender gender
+        int age
+        decimal height_cm
+        decimal current_weight_kg
+        decimal target_weight_kg
+        activity_level activity_level
+        goal goal
+        varchar address
+        weight_loss_speed weight_loss_speed
+        dietary_restriction dietary_restriction
+        health_condition health_conditions
+        varchar other_health_condition_description
+        timestamp created_at
+        timestamp updated_at
+    }
+    conversations {
+        varchar id PK
+        bigint user_id FK
+        varchar title
+        timestamp created_at
+        timestamp updated_at
+    }
+    messages {
+        bigint id PK
+        varchar conversation_id FK
+        text content
+        message_role role
+        timestamp created_at
+    }
+    diet_plans {
+        bigint id PK
+        bigint user_id FK
+        date plan_date
+        decimal total_calories
+        decimal total_protein
+        decimal total_carbs
+        decimal total_fat
+        boolean is_generated
+        timestamp created_at
+    }
+    meals {
+        bigint id PK
+        bigint diet_plan_id FK
+        meal_type meal_type
+        varchar meal_name
+        decimal calories
+        decimal protein
+        decimal carbs
+        decimal fat
+        int preparation_time_minutes
+        text instructions
+        text health_benefits
+        json ingredients
+        timestamp created_at
+    }
+    food_logs {
+        bigint id PK
+        bigint user_id FK
+        meal_type meal_type
+        varchar meal_name
+        varchar image_url
+        varchar image_description
+        timestamp logged_at
+        timestamp created_at
+        boolean is_from_camera
+    }
+    food_items {
+        bigint id PK
+        bigint food_log_id FK
+        varchar name
+        double quantity
+        varchar unit
+        double calories
+        double protein
+        double fat
+        double carbs
+    }
+    exercise_logs {
+        bigint id PK
+        bigint user_id FK
+        varchar exercise_name
+        int duration_minutes
+        exercise_intensity intensity
+        decimal calories_burned
+        timestamp logged_at
+        timestamp created_at
+    }
+    water_logs {
+        bigint id PK
+        bigint user_id FK
+        decimal amount_ml
+        timestamp logged_at
+        timestamp created_at
+    }
+    daily_nutrition_summaries {
+        bigint id PK
+        bigint user_id FK
+        date date
+        decimal target_calories
+        decimal target_protein
+        decimal target_carbs
+        decimal target_fat
+        decimal consumed_calories
+        decimal consumed_protein
+        decimal consumed_carbs
+        decimal consumed_fat
+        decimal calories_burned
+        decimal water_consumed_ml
+        decimal target_water_ml
+        decimal remaining_calories
+        timestamp created_at
+        timestamp updated_at
+    }
+    user_streaks {
+        bigint id PK
+        bigint user_id FK,UK
+        int current_login_streak
+        int longest_login_streak
+        date last_login_date
+        int total_points
+        timestamp created_at
+        timestamp updated_at
+    }
+    daily_points {
+        bigint id PK
+        bigint user_id FK
+        date date
+        int login_points
+        int diet_points
+        int total_points
+        timestamp created_at
+    }
+    points_history {
+        bigint id PK
+        bigint user_id FK
+        int points_earned
+        varchar reason
+        text description
+        date date
+        timestamp created_at
+    }
+
+    users ||--|| user_profiles : "has profile"
+    users ||--o{ conversations : "has"
+    conversations ||--o{ messages : "contains"
+    users ||--o{ diet_plans : "has"
+    diet_plans ||--o{ meals : "contains"
+    users ||--o{ food_logs : "logs"
+    food_logs ||--o{ food_items : "contains"
+    users ||--o{ exercise_logs : "logs"
+    users ||--o{ water_logs : "logs"
+    users ||--o{ daily_nutrition_summaries : "has"
+    users ||..|| user_streaks : "streak (logical)"
+    users ||..o{ daily_points : "earns (logical)"
+    users ||..o{ points_history : "earns (logical)"
+</pre>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: true, maxTextSize: 200000, er: { useMaxWidth: false } });
+</script>
+</body>
+</html>
