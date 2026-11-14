@@ -97,17 +97,14 @@ public class WaterLoggingService {
     }
 
     public boolean deleteWaterLog(Long waterLogId, Long userId) {
-        Optional<WaterLog> existingLog = waterLogRepository.findById(waterLogId);
+        // Owner-scoped lookup: another user's log is indistinguishable from a missing one
+        Optional<WaterLog> existingLog = waterLogRepository.findByIdAndUser_Id(waterLogId, userId);
 
         if (existingLog.isEmpty()) {
             return false;
         }
 
         WaterLog waterLog = existingLog.get();
-
-        if (!waterLog.getUser().getId().equals(userId)) {
-            throw new ResourceNotFoundException("Water log not found");
-        }
 
         LocalDateTime loggedAt = waterLog.getLoggedAt();
         waterLogRepository.delete(waterLog);

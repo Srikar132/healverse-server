@@ -101,13 +101,9 @@ public class ExerciseLoggingService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        ExerciseLog exerciseLog = exerciseLogRepository.findById(exerciseLogId)
+        // Owner-scoped lookup: another user's log is indistinguishable from a missing one
+        ExerciseLog exerciseLog = exerciseLogRepository.findByIdAndUser_Id(exerciseLogId, user.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Exercise log not found"));
-
-        // Check if this log belongs to the user
-        if (!exerciseLog.getUser().getId().equals(user.getId())) {
-            throw new ResourceNotFoundException("Exercise log not found");
-        }
 
         BigDecimal caloriesBurned = calorieCalculatorService.calculateExerciseCalories(
                 request.getExerciseName(),
@@ -132,15 +128,11 @@ public class ExerciseLoggingService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        ExerciseLog exerciseLog = exerciseLogRepository.findById(exerciseLogId)
+        ExerciseLog exerciseLog = exerciseLogRepository.findByIdAndUser_Id(exerciseLogId, user.getId())
                 .orElse(null);
 
         if (exerciseLog == null) {
             return false;
-        }
-
-        if (!exerciseLog.getUser().getId().equals(user.getId())) {
-            throw new ResourceNotFoundException("Exercise log not found");
         }
 
         LocalDateTime loggedAt = exerciseLog.getLoggedAt();

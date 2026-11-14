@@ -9,9 +9,12 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ExerciseLogRepository extends JpaRepository<ExerciseLog, Long> {
+
+    Optional<ExerciseLog> findByIdAndUser_Id(Long id, Long userId);
 
     // ✅ Native SQL query using user_id
     @Query(value = "SELECT * FROM exercise_logs WHERE user_id = :userId AND DATE(logged_at) = CURRENT_DATE ORDER BY logged_at DESC", nativeQuery = true)

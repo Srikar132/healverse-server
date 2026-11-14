@@ -146,9 +146,9 @@ public class FoodLoggingService {
             throw new ExternalServiceException("The AI service could not analyze the food image. Please try again.", e);
         }
 
-        String imageUrl = "https://example.com/fake-image.jpg"; // Your actual image upload logic
-
-        FoodLogResponse res = createFoodLog(userId, request, aiFoodResponse, true, imageUrl, aiFoodResponse.getDescription());
+        // The photo is analysed but not stored: there is no image storage yet, so imageUrl stays null
+        // (the client shows no thumbnail) rather than saving a placeholder URL.
+        FoodLogResponse res = createFoodLog(userId, request, aiFoodResponse, true, null, aiFoodResponse.getDescription());
         nutritionSyncService.syncAfterFoodLogAsync(userId, res.getLoggedAt());
 
         // TODO: gamification points are disabled here (StackOverflowError - investigate gamification recursion)

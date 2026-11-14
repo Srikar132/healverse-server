@@ -3,6 +3,7 @@ package com.bytehealers.healverse.controller;
 import com.bytehealers.healverse.dto.request.LogWaterRequest;
 import com.bytehealers.healverse.dto.request.QuickWaterLogRequest;
 import com.bytehealers.healverse.dto.response.ApiResponse;
+import com.bytehealers.healverse.exception.ResourceNotFoundException;
 import com.bytehealers.healverse.model.WaterLog;
 import com.bytehealers.healverse.service.WaterLoggingService;
 import com.bytehealers.healverse.security.CurrentUserId;
@@ -71,7 +72,7 @@ public class WaterLoggingController {
         if (deleted) {
             return ResponseEntity.ok(ApiResponse.success("Water log deleted successfully", "Deleted"));
         } else {
-            return ResponseEntity.notFound().build();
+            throw new ResourceNotFoundException("Water log not found");
         }
     }
 }
