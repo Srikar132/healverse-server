@@ -51,8 +51,11 @@ public class FoodLoggingService {
     @Value("${app.ai.vision-model}")
     private String visionModel;
 
-    @Value("${app.ai.max-tokens:4000}")
-    private Integer maxTokens;
+    @Value("${app.ai.food-max-tokens:1200}")
+    private Integer foodMaxTokens;
+
+    @Value("${app.ai.reasoning-effort:}")
+    private String reasoningEffort;
 
     private static final List<MimeType> SUPPORTED_IMAGE_TYPES = List.of(
             MimeTypeUtils.IMAGE_JPEG, MimeTypeUtils.IMAGE_PNG, MimeTypeUtils.parseMimeType("image/webp"));
@@ -107,10 +110,15 @@ public class FoodLoggingService {
         AIFoodResponse aiFoodResponse;
         try {
             String aiResponse = chatClient.prompt()
+                    // Per-call options replace the client defaults, so state everything that matters here
+                    .options(OpenAiChatOptions.builder()
+                            .maxCompletionTokens(foodMaxTokens)
+                            .reasoningEffort(reasoningEffort.isBlank() ? null : reasoningEffort)
+                            .build())
                     .user(String.format(FOOD_ANALYSIS_PROMPT, request.getDescription()))
                     .call()
                     .content();
-            String cleanedResponse = cleanJsonResponse(aiResponse)
+            String cleanedResponse = AiJson.extractObject(aiResponse)
                     .orElseThrow(() -> new IllegalStateException("AI response was empty or invalid"));
             aiFoodResponse = objectMapper.readValue(cleanedResponse, AIFoodResponse.class);
         } catch (Exception e) {
@@ -130,7 +138,7 @@ public class FoodLoggingService {
                     // Per-call override: photos go to the vision model, text keeps the default model.
                     .options(OpenAiChatOptions.builder()
                             .model(visionModel)
-                            .maxCompletionTokens(maxTokens)
+                            .maxCompletionTokens(foodMaxTokens)
                             .temperature(0.2)
                             .build())
                     .user(userSpec -> userSpec
@@ -139,7 +147,7 @@ public class FoodLoggingService {
                     .call()
                     .content();
 
-            String cleanedResponse = cleanJsonResponse(aiResponse)
+            String cleanedResponse = AiJson.extractObject(aiResponse)
                     .orElseThrow(() -> new IllegalStateException("AI response was empty or invalid"));
             aiFoodResponse = objectMapper.readValue(cleanedResponse, AIFoodResponse.class);
         } catch (Exception e) {
@@ -168,24 +176,6 @@ public class FoodLoggingService {
                 .orElseThrow(() -> new BadRequestException("Unsupported image type. Use JPEG, PNG or WebP."));
     }
 
-    private Optional<String> cleanJsonResponse(String response) {
-        if (response == null || response.trim().isEmpty()) {
-            return Optional.empty();
-        }
-
-        // Remove markdown code blocks
-        response = response.trim();
-        if (response.startsWith("```json")) {
-            response = response.substring(7);
-        } else if (response.startsWith("```")) {
-            response = response.substring(3);
-        }
-        if (response.endsWith("```")) {
-            response = response.substring(0, response.length() - 3);
-        }
-
-        return Optional.of(response.trim());
-    }
     private FoodLogResponse createFoodLog(Long userId, FoodLogRequest request, AIFoodResponse aiFoodResponse,
                                           boolean isFromCamera, String imageUrl, String imageDescription) {
 

@@ -23,7 +23,7 @@ services:
   #   DB_URL=jdbc:postgresql://db:5432/healverse
   #   DB_USERNAME=healverse
   #   DB_PASSWORD=<same as LOCAL_DB_PASSWORD, default "healverse">
-  #   DB_DDL_AUTO=update      # the prod profile validates the schema; a fresh database has none yet
+  # Flyway creates the schema on first start.
   db:
     profiles: ["local-db"]
     image: postgres:16-alpine

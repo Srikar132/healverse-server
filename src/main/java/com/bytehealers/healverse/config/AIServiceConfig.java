@@ -21,7 +21,7 @@ import org.springframework.retry.annotation.EnableRetry;
 @Slf4j
 public class AIServiceConfig {
 
-    @Value("${app.ai.max-tokens:4000}")
+    @Value("${app.ai.max-tokens:3000}")
     private Integer maxTokens;
 
     @Value("${app.ai.reasoning-effort:}")

@@ -533,19 +533,8 @@ public class AIRecommendationService {
     }
 
     private String extractJsonFromResponse(String response) {
-        if (response.contains("```json")) {
-            int start = response.indexOf("```json") + 7;
-            int end = response.indexOf("```", start);
-            return response.substring(start, end).trim();
-        }
-
-        if (response.contains("```")) {
-            int start = response.indexOf("```") + 3;
-            int end = response.indexOf("```", start);
-            return response.substring(start, end).trim();
-        }
-
-        return response.trim();
+        return AiJson.extractObject(response)
+                .orElseThrow(() -> new IllegalStateException("AI response was empty"));
     }
 
     private Meal convertJsonToMeal(JsonNode mealNode) {
