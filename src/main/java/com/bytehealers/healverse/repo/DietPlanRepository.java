@@ -1,6 +1,7 @@
 package com.bytehealers.healverse.repo;
 
 import com.bytehealers.healverse.model.DietPlan;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -28,9 +29,12 @@ public interface DietPlanRepository extends JpaRepository<DietPlan, Long> {
     );
 
     // Change from findByUserIdAndPlanDate to:
+    // meals are lazy but serialized with the plan, so load them here (no open-in-view session at response time)
+    @EntityGraph(attributePaths = "meals")
     @Query("SELECT d FROM DietPlan d WHERE d.user.id = :userId AND d.planDate = :planDate ORDER BY d.createdAt DESC")
     Optional<DietPlan> findByUserIdAndPlanDate(@Param("userId") Long userId, @Param("planDate") LocalDate planDate);
 
+    @EntityGraph(attributePaths = "meals")
     @Query("SELECT dp FROM DietPlan dp WHERE dp.user.id = :userId AND dp.planDate BETWEEN :startDate AND :endDate ORDER BY dp.planDate")
     List<DietPlan> findWeeklyPlansByUserIdAndDateRange(
         @Param("userId") Long userId,

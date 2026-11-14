@@ -1,5 +1,6 @@
 package com.bytehealers.healverse.model;
 
+import com.bytehealers.healverse.model.enums.MessageRole;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;

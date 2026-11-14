@@ -1,4 +1,3 @@
-package com.bytehealers.healverse.util;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -13,7 +12,7 @@ import java.util.Map;
  * Tables, enums and relations are declared once and rendered to Mermaid, PlantUML, DBML and a standalone HTML viewer.
  * Keep in sync with the JPA entities in com.bytehealers.healverse.model.
  *
- * Usage: java ERDiagramGenerator.java [outputDir]   (default: docs/erd)
+ * Usage (from repo root): java tools/ERDiagramGenerator.java [outputDir]   (default: docs/erd)
  */
 public class ERDiagramGenerator {
 

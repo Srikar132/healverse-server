@@ -1,5 +1,6 @@
 package com.bytehealers.healverse.service;
 
+import com.bytehealers.healverse.exception.*;
 import com.bytehealers.healverse.dto.response.TextResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,7 +11,6 @@ import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.openai.OpenAiAudioSpeechModel;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -21,9 +21,6 @@ import java.util.Map;
 @Service
 public class VoiceAssistantService {
 
-
-    @Autowired
-    private ChatService chatService;
 
     private static final Logger logger = LoggerFactory.getLogger(VoiceAssistantService.class);
 
@@ -78,7 +75,7 @@ public class VoiceAssistantService {
 
         } catch (Exception e) {
             logger.error("Error processing AI request for session {}: {}", sessionId, e.getMessage(), e);
-            throw new RuntimeException("Unable to process AI request", e);
+            throw new ExternalServiceException("The AI assistant is unavailable right now. Please try again.", e);
         }
     }
 
@@ -98,7 +95,7 @@ public class VoiceAssistantService {
 
         } catch (Exception e) {
             logger.error("TTS error: {}", e.getMessage(), e);
-            throw new RuntimeException("Text-to-speech conversion failed", e);
+            throw new ExternalServiceException("Text-to-speech is unavailable right now. Please try again.", e);
         }
     }
 

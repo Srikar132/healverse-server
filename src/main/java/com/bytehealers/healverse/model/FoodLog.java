@@ -1,5 +1,6 @@
 package com.bytehealers.healverse.model;
 
+import com.bytehealers.healverse.model.enums.MealType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;

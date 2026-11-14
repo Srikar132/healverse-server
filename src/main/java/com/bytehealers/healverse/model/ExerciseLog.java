@@ -1,6 +1,7 @@
 package com.bytehealers.healverse.model;
 
 
+import com.bytehealers.healverse.model.enums.ExerciseIntensity;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;

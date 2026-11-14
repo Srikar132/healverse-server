@@ -1,6 +1,6 @@
 package com.bytehealers.healverse.service;
 
-import com.bytehealers.healverse.dto.UserProfileDTO;
+import com.bytehealers.healverse.dto.request.UserProfileDTO;
 import com.bytehealers.healverse.dto.request.RegisterRequest;
 import com.bytehealers.healverse.exception.DuplicateResourceException;
 import com.bytehealers.healverse.exception.ResourceNotFoundException;
@@ -10,26 +10,23 @@ import com.bytehealers.healverse.repo.UserProfileRepository;
 import com.bytehealers.healverse.repo.UserRepository;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
+@RequiredArgsConstructor
 @Service
 public class UserService {
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
 
-    @Autowired
-    private UserProfileRepository userProfileRepository;
+    private final UserProfileRepository userProfileRepository;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    private final PasswordEncoder passwordEncoder;
 
-    @Autowired
-    private UserProfileService userProfileService;
+    private final UserProfileService userProfileService;
 
 
     @Transactional

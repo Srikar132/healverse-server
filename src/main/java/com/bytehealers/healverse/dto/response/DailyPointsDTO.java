@@ -1,4 +1,4 @@
-package com.bytehealers.healverse.dto;
+package com.bytehealers.healverse.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

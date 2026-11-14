@@ -1,7 +1,7 @@
 package com.bytehealers.healverse.service;
 
 
-import com.bytehealers.healverse.model.ExerciseIntensity;
+import com.bytehealers.healverse.model.enums.ExerciseIntensity;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;

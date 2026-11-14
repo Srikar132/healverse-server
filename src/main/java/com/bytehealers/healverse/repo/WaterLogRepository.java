@@ -11,9 +11,12 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface WaterLogRepository extends JpaRepository<WaterLog, Long> {
+
+    Optional<WaterLog> findByIdAndUser_Id(Long id, Long userId);
 
     // 🔄 Changed from username to user.id
     @Query("SELECT w FROM WaterLog w WHERE w.user.id = :userId AND w.loggedAt BETWEEN :start AND :end")
