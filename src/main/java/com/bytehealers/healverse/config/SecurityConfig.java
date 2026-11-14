@@ -45,7 +45,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
-                // Honours the controllers' @CrossOrigin so browser preflight requests are not rejected as 401
+                // Honors the controllers' @CrossOrigin so browser preflight requests are not rejected as 401
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
