@@ -3,8 +3,8 @@ package com.bytehealers.healverse.controller;
 import com.bytehealers.healverse.dto.GamificationSummaryDTO;
 import com.bytehealers.healverse.dto.response.ApiResponse;
 import com.bytehealers.healverse.service.GamificationService;
-import com.bytehealers.healverse.util.UserContext;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.bytehealers.healverse.security.CurrentUserId;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,18 +12,15 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/gamification")
+@RequiredArgsConstructor
 public class GamificationController {
 
-    @Autowired
-    private GamificationService gamificationService;
-    @Autowired
-    private UserContext userContext;
+    private final GamificationService gamificationService;
 
 
     // Get user's gamification summary
     @GetMapping("/summary")
-    public ResponseEntity<ApiResponse<GamificationSummaryDTO>> getSummary() {
-        Long userId = userContext.getCurrentUserId();
+    public ResponseEntity<ApiResponse<GamificationSummaryDTO>> getSummary(@CurrentUserId Long userId) {
         return ResponseEntity.ok(ApiResponse.success(gamificationService.getUserSummary(userId)));
     }
 

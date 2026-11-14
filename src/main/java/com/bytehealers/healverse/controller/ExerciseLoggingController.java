@@ -7,9 +7,9 @@ import com.bytehealers.healverse.model.ExerciseIntensity;
 import com.bytehealers.healverse.model.ExerciseLog;
 import com.bytehealers.healverse.service.CalorieCalculatorService;
 import com.bytehealers.healverse.service.ExerciseLoggingService;
-import com.bytehealers.healverse.util.UserContext;
+import com.bytehealers.healverse.security.CurrentUserId;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,37 +22,30 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/exercise-logs")
 @CrossOrigin(origins = "*")
+@RequiredArgsConstructor
 public class ExerciseLoggingController {
 
-    @Autowired
-    private ExerciseLoggingService exerciseLoggingService;
+    private final ExerciseLoggingService exerciseLoggingService;
+    private final CalorieCalculatorService calorieCalculatorService;
 
-    @Autowired
-    private CalorieCalculatorService calorieCalculatorService;
-
-    @Autowired
-    private UserContext userContext;
 
     @PostMapping("/log")
-    public ResponseEntity<ApiResponse<ExerciseLog>> logExercise(@Valid @RequestBody LogExerciseRequest request) {
-        Long userId = userContext.getCurrentUserId();
+    public ResponseEntity<ApiResponse<ExerciseLog>> logExercise(@Valid @RequestBody LogExerciseRequest request, @CurrentUserId Long userId) {
         ExerciseLog exerciseLog = exerciseLoggingService.logExercise(request, userId);
         return ResponseEntity.ok(ApiResponse.success("Exercise logged successfully", exerciseLog));
     }
 
     @GetMapping("/today")
-    public ResponseEntity<ApiResponse<List<ExerciseLog>>> getTodaysExerciseLogs() {
-        Long userId = userContext.getCurrentUserId();
+    public ResponseEntity<ApiResponse<List<ExerciseLog>>> getTodaysExerciseLogs(@CurrentUserId Long userId) {
         List<ExerciseLog> exerciseLogs = exerciseLoggingService.getTodaysExerciseLogs(userId);
         return ResponseEntity.ok(ApiResponse.success("Today's exercise logs retrieved successfully", exerciseLogs));
     }
 
     @GetMapping("/{date}")
     public ResponseEntity<ApiResponse<List<ExerciseLog>>> getExerciseByDate(
-            @PathVariable @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate date
+            @PathVariable @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate date,
+            @CurrentUserId Long userId
     ) {
-        Long userId = userContext.getCurrentUserId();
-
         List<ExerciseLog> exerciseLogs = exerciseLoggingService.getExerciseLogsByDate(userId , date);
 
         return ResponseEntity.ok(ApiResponse.success(
@@ -64,8 +57,7 @@ public class ExerciseLoggingController {
     @GetMapping("/range")
     public ResponseEntity<ApiResponse<List<ExerciseLog>>> getExerciseLogsByDateRange(
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
-            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate) {
-        Long userId = userContext.getCurrentUserId();
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate, @CurrentUserId Long userId) {
         List<ExerciseLog> exerciseLogs = exerciseLoggingService.getExerciseLogsByDateRange(userId, startDate, endDate);
         return ResponseEntity.ok(ApiResponse.success("Exercise logs retrieved successfully", exerciseLogs));
     }
@@ -73,15 +65,13 @@ public class ExerciseLoggingController {
     @PutMapping("/{exerciseLogId}")
     public ResponseEntity<ApiResponse<ExerciseLog>> updateExerciseLog(
             @PathVariable Long exerciseLogId,
-            @Valid @RequestBody LogExerciseRequest request) {
-        Long userId = userContext.getCurrentUserId();
+            @Valid @RequestBody LogExerciseRequest request, @CurrentUserId Long userId) {
         ExerciseLog updatedLog = exerciseLoggingService.updateExerciseLog(exerciseLogId, request, userId);
         return ResponseEntity.ok(ApiResponse.success("Exercise log updated successfully", updatedLog));
     }
 
     @DeleteMapping("/{exerciseLogId}")
-    public ResponseEntity<ApiResponse<String>> deleteExerciseLog(@PathVariable Long exerciseLogId) {
-        Long userId = userContext.getCurrentUserId();
+    public ResponseEntity<ApiResponse<String>> deleteExerciseLog(@PathVariable Long exerciseLogId, @CurrentUserId Long userId) {
         boolean deleted = exerciseLoggingService.deleteExerciseLog(exerciseLogId, userId);
         if (deleted) {
             return ResponseEntity.ok(ApiResponse.success("Exercise log deleted successfully", "Deleted"));

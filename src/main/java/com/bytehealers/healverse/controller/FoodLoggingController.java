@@ -6,8 +6,8 @@ import com.bytehealers.healverse.exception.BadRequestException;
 import com.bytehealers.healverse.dto.response.FoodLogResponse;
 import com.bytehealers.healverse.model.MealType;
 import com.bytehealers.healverse.service.FoodLoggingService;
-import com.bytehealers.healverse.util.UserContext;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.bytehealers.healverse.security.CurrentUserId;
+import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -20,17 +20,14 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/food-logs")
 @CrossOrigin(origins = "*")
+@RequiredArgsConstructor
 public class FoodLoggingController {
 
-    @Autowired
-    private FoodLoggingService foodLoggingService;
+    private final FoodLoggingService foodLoggingService;
 
-    @Autowired
-    private UserContext userContext;
 
     @PostMapping("/log/description")
-    public ResponseEntity<ApiResponse<FoodLogResponse>> logFoodByDescription(@RequestBody FoodLogRequest request) {
-        Long userId = userContext.getCurrentUserId();
+    public ResponseEntity<ApiResponse<FoodLogResponse>> logFoodByDescription(@RequestBody FoodLogRequest request, @CurrentUserId Long userId) {
         FoodLogResponse response = foodLoggingService.logFoodByDescription(userId, request);
         return ResponseEntity.ok(ApiResponse.success("Food log created successfully", response));
     }
@@ -38,8 +35,7 @@ public class FoodLoggingController {
     @PostMapping(value = "/log/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<FoodLogResponse>> logFoodByImage(
             @RequestPart("image") MultipartFile image,
-            @RequestPart("mealType") String mealType) {
-        Long userId = userContext.getCurrentUserId();
+            @RequestPart("mealType") String mealType, @CurrentUserId Long userId) {
         FoodLogRequest request = new FoodLogRequest();
         request.setMealType(parseMealType(mealType));
 
@@ -49,23 +45,21 @@ public class FoodLoggingController {
 
     @GetMapping("/date/{date}")
     public ResponseEntity<ApiResponse<List<FoodLogResponse>>> getFoodLogsByDate(
-            @PathVariable @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate date
+            @PathVariable @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate date,
+            @CurrentUserId Long userId
     ) {
-        Long userId = userContext.getCurrentUserId();
         List<FoodLogResponse> response = foodLoggingService.getFoodLogsByDate(userId , date);
         return ResponseEntity.ok(ApiResponse.success("Today's food logs retrieved successfully", response));
     }
 
     @GetMapping("/all")
-    public ResponseEntity<ApiResponse<List<FoodLogResponse>>> getAllFoodLogs() {
-        Long userId = userContext.getCurrentUserId();
+    public ResponseEntity<ApiResponse<List<FoodLogResponse>>> getAllFoodLogs(@CurrentUserId Long userId) {
         List<FoodLogResponse> response = foodLoggingService.getAllFoodLogs(userId);
         return ResponseEntity.ok(ApiResponse.success("All food logs retrieved successfully", response));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<FoodLogResponse>> getFoodLogById(@PathVariable Long id) {
-        Long userId = userContext.getCurrentUserId();
+    public ResponseEntity<ApiResponse<FoodLogResponse>> getFoodLogById(@PathVariable Long id, @CurrentUserId Long userId) {
         FoodLogResponse response = foodLoggingService.getFoodLogById(userId, id);
         if (response == null) {
             return ResponseEntity.status(404).body(ApiResponse.error("Food log not found"));
@@ -76,15 +70,13 @@ public class FoodLoggingController {
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<FoodLogResponse>> updateFoodLog(
             @PathVariable Long id,
-            @RequestBody FoodLogRequest request) {
-        Long userId = userContext.getCurrentUserId();
+            @RequestBody FoodLogRequest request, @CurrentUserId Long userId) {
         FoodLogResponse response = foodLoggingService.updateFoodLog(userId, id, request);
         return ResponseEntity.ok(ApiResponse.success("Food log updated successfully", response));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<String>> deleteFoodLog(@PathVariable Long id) {
-        Long userId = userContext.getCurrentUserId();
+    public ResponseEntity<ApiResponse<String>> deleteFoodLog(@PathVariable Long id, @CurrentUserId Long userId) {
         boolean deleted = foodLoggingService.deleteFoodLog(userId, id);
         if (deleted) {
             return ResponseEntity.ok(ApiResponse.success("Food log deleted successfully", "Deleted"));

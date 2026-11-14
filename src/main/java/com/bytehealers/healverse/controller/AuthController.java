@@ -10,7 +10,7 @@ import com.bytehealers.healverse.service.JwtService;
 import com.bytehealers.healverse.service.LoginAttemptService;
 import com.bytehealers.healverse.service.UserPrinciple;
 import com.bytehealers.healverse.service.UserService;
-import com.bytehealers.healverse.util.UserContext;
+import com.bytehealers.healverse.security.CurrentUserId;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -36,7 +36,6 @@ public class AuthController {
     private final JwtService jwtService;
     private final GamificationService gamificationService;
     private final LoginAttemptService loginAttemptService;
-    private final UserContext userContext;
 
 
     @PostMapping("/register")
@@ -98,8 +97,10 @@ public class AuthController {
      * let a token be refreshed forever.
      */
     @GetMapping("/check-auth")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> checkAuth(@RequestHeader("Authorization") String authHeader) {
-        User user = userService.findById(userContext.getCurrentUserId())
+    public ResponseEntity<ApiResponse<Map<String, Object>>> checkAuth(
+            @CurrentUserId Long userId,
+            @RequestHeader("Authorization") String authHeader) {
+        User user = userService.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         Map<String, Object> responseData = new HashMap<>();

@@ -6,7 +6,7 @@ import com.bytehealers.healverse.dto.response.TextResponse;
 import com.bytehealers.healverse.exception.BadRequestException;
 import com.bytehealers.healverse.dto.response.VoiceChatResponse;
 import com.bytehealers.healverse.service.VoiceAssistantService;
-import com.bytehealers.healverse.util.UserContext;
+import com.bytehealers.healverse.security.CurrentUserId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -30,11 +30,9 @@ public class VoiceAssistantController {
     private static final Pattern SESSION_ID_PATTERN = Pattern.compile("[A-Za-z0-9_-]{1,64}");
 
     private final VoiceAssistantService voiceAssistantService;
-    private final UserContext userContext;
 
-    public VoiceAssistantController(VoiceAssistantService voiceAssistantService, UserContext userContext) {
+    public VoiceAssistantController(VoiceAssistantService voiceAssistantService) {
         this.voiceAssistantService = voiceAssistantService;
-        this.userContext = userContext;
     }
 
     /**
@@ -42,21 +40,22 @@ public class VoiceAssistantController {
      * read, extend or clear another user's conversation. A missing id falls back to the user's
      * "default" session.
      */
-    private String sessionKey(String sessionId) {
+    private String sessionKey(Long userId, String sessionId) {
         String clientSession = (sessionId == null || sessionId.isBlank()) ? "default" : sessionId.trim();
         if (!SESSION_ID_PATTERN.matcher(clientSession).matches()) {
             throw new BadRequestException("Invalid session id");
         }
-        return userContext.getCurrentUserId() + ":" + clientSession;
+        return userId + ":" + clientSession;
     }
 
     @PostMapping("/ask-ai")
     public ResponseEntity<TextResponse> askAI(
+            @CurrentUserId Long userId,
             @Valid @RequestBody TextRequest request,
             @RequestHeader(value = "X-Session-ID", required = false) String sessionId) {
 
         logger.info("Received ask-ai request");
-        return ResponseEntity.ok(voiceAssistantService.processAIRequest(request.getText(), sessionKey(sessionId)));
+        return ResponseEntity.ok(voiceAssistantService.processAIRequest(request.getText(), sessionKey(userId, sessionId)));
     }
 
     @PostMapping("/text-to-speech")
@@ -69,12 +68,13 @@ public class VoiceAssistantController {
 
     @PostMapping("/")
     public ResponseEntity<byte[]> voiceChat(
+            @CurrentUserId Long userId,
             @Valid @RequestBody TextRequest request,
             @RequestHeader(value = "X-Session-ID", required = false) String sessionId) {
 
         logger.info("Received voice-chat request");
 
-        byte[] audioBytes = voiceAssistantService.processVoiceChat(request.getText(), sessionKey(sessionId));
+        byte[] audioBytes = voiceAssistantService.processVoiceChat(request.getText(), sessionKey(userId, sessionId));
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.valueOf("audio/mpeg"));
@@ -86,12 +86,13 @@ public class VoiceAssistantController {
 
     @PostMapping("/voice-chat-with-text")
     public ResponseEntity<VoiceChatResponse> voiceChatWithText(
+            @CurrentUserId Long userId,
             @Valid @RequestBody TextRequest request,
             @RequestHeader(value = "X-Session-ID", required = false) String sessionId) {
 
         logger.info("Received voice-chat-with-text request");
 
-        TextResponse aiResponse = voiceAssistantService.processAIRequest(request.getText(), sessionKey(sessionId));
+        TextResponse aiResponse = voiceAssistantService.processAIRequest(request.getText(), sessionKey(userId, sessionId));
         byte[] audioBytes = voiceAssistantService.generateSpeech(aiResponse.getResponse());
 
         VoiceChatResponse response = new VoiceChatResponse();
@@ -101,8 +102,8 @@ public class VoiceAssistantController {
     }
 
     @DeleteMapping("/{sessionId}")
-    public ResponseEntity<ApiResponse<Void>> clearConversation(@PathVariable String sessionId) {
-        voiceAssistantService.clearConversationHistory(sessionKey(sessionId));
+    public ResponseEntity<ApiResponse<Void>> clearConversation(@CurrentUserId Long userId, @PathVariable String sessionId) {
+        voiceAssistantService.clearConversationHistory(sessionKey(userId, sessionId));
         return ResponseEntity.ok(ApiResponse.success("Conversation history cleared", null));
     }
 }
