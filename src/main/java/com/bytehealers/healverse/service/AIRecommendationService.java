@@ -1,5 +1,6 @@
 package com.bytehealers.healverse.service;
 
+import com.bytehealers.healverse.model.enums.MealType;
 import com.bytehealers.healverse.exception.*;
 import com.bytehealers.healverse.model.*;
 import com.bytehealers.healverse.repo.DailyNutritionSummaryRepository;

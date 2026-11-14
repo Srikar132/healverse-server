@@ -1,6 +1,6 @@
 package com.bytehealers.healverse.controller;
 
-import com.bytehealers.healverse.dto.NutritionStats;
+import com.bytehealers.healverse.dto.response.NutritionStats;
 import com.bytehealers.healverse.dto.response.ApiResponse;
 import com.bytehealers.healverse.dto.response.DashboardResponse;
 import com.bytehealers.healverse.model.DailyNutritionSummary;

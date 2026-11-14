@@ -1,5 +1,6 @@
 package com.bytehealers.healverse.model;
 
+import com.bytehealers.healverse.model.enums.MealType;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;

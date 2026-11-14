@@ -1,5 +1,9 @@
 package com.bytehealers.healverse.service;
 
+import com.bytehealers.healverse.model.enums.ActivityLevel;
+import com.bytehealers.healverse.model.enums.Gender;
+import com.bytehealers.healverse.model.enums.Goal;
+import com.bytehealers.healverse.model.enums.WeightLossSpeed;
 import com.bytehealers.healverse.exception.*;
 import com.bytehealers.healverse.model.*;
 import org.springframework.stereotype.Service;

@@ -1,4 +1,4 @@
-package com.bytehealers.healverse.dto;
+package com.bytehealers.healverse.dto.response;
 import com.bytehealers.healverse.model.PointsHistory;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

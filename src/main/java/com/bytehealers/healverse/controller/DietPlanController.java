@@ -1,9 +1,9 @@
 package com.bytehealers.healverse.controller;
 
+import com.bytehealers.healverse.model.enums.MealType;
 import com.bytehealers.healverse.dto.response.ApiResponse;
 import com.bytehealers.healverse.model.DietPlan;
 import com.bytehealers.healverse.model.Meal;
-import com.bytehealers.healverse.model.MealType;
 import com.bytehealers.healverse.service.DietPlanService;
 import com.bytehealers.healverse.security.CurrentUserId;
 import lombok.RequiredArgsConstructor;

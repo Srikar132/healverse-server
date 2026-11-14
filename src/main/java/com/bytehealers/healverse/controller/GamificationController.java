@@ -1,6 +1,6 @@
 package com.bytehealers.healverse.controller;
 
-import com.bytehealers.healverse.dto.GamificationSummaryDTO;
+import com.bytehealers.healverse.dto.response.GamificationSummaryDTO;
 import com.bytehealers.healverse.dto.response.ApiResponse;
 import com.bytehealers.healverse.service.GamificationService;
 import com.bytehealers.healverse.security.CurrentUserId;

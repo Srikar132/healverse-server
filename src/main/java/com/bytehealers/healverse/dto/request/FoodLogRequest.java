@@ -1,6 +1,6 @@
 package com.bytehealers.healverse.dto.request;
 
-import com.bytehealers.healverse.model.MealType;
+import com.bytehealers.healverse.model.enums.MealType;
 import lombok.Data;
 
 import java.time.LocalDateTime;

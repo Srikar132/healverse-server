@@ -1,6 +1,6 @@
 package com.bytehealers.healverse.controller;
 
-import com.bytehealers.healverse.dto.UserProfileDTO;
+import com.bytehealers.healverse.dto.request.UserProfileDTO;
 import com.bytehealers.healverse.dto.response.ApiResponse;
 import com.bytehealers.healverse.exception.ResourceNotFoundException;
 import com.bytehealers.healverse.model.UserProfile;

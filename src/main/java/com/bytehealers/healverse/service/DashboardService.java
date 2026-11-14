@@ -1,6 +1,6 @@
 package com.bytehealers.healverse.service;
 
-import com.bytehealers.healverse.dto.NutritionStats;
+import com.bytehealers.healverse.dto.response.NutritionStats;
 import com.bytehealers.healverse.dto.response.DashboardResponse;
 import com.bytehealers.healverse.dto.response.FoodLogResponse;
 import com.bytehealers.healverse.exception.ResourceNotFoundException;

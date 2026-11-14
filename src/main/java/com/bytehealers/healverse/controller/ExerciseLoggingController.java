@@ -1,9 +1,9 @@
 package com.bytehealers.healverse.controller;
 
+import com.bytehealers.healverse.model.enums.ExerciseIntensity;
 import com.bytehealers.healverse.dto.request.LogExerciseRequest;
 import com.bytehealers.healverse.dto.response.ApiResponse;
 import com.bytehealers.healverse.dto.response.DashboardResponse;
-import com.bytehealers.healverse.model.ExerciseIntensity;
 import com.bytehealers.healverse.model.ExerciseLog;
 import com.bytehealers.healverse.service.CalorieCalculatorService;
 import com.bytehealers.healverse.service.ExerciseLoggingService;

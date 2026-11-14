@@ -1,4 +1,4 @@
-package com.bytehealers.healverse.model;
+package com.bytehealers.healverse.model.enums;
 
 public enum Gender {
     MALE, FEMALE, OTHER

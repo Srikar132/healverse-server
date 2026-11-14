@@ -1,6 +1,6 @@
 package com.bytehealers.healverse.dto.request;
 
-import com.bytehealers.healverse.dto.UserProfileDTO;
+import com.bytehealers.healverse.dto.request.UserProfileDTO;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

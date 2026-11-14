@@ -1,5 +1,6 @@
 package com.bytehealers.healverse.service;
 
+import com.bytehealers.healverse.model.enums.MessageRole;
 import com.bytehealers.healverse.exception.*;
 import com.bytehealers.healverse.dto.response.MessageResponse;
 import com.bytehealers.healverse.dto.request.SendMessageRequest;

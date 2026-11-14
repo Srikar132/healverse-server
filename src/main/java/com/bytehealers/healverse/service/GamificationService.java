@@ -1,6 +1,8 @@
 package com.bytehealers.healverse.service;
 
-import com.bytehealers.healverse.dto.GamificationSummaryDTO;
+import com.bytehealers.healverse.model.enums.MealType;
+import com.bytehealers.healverse.model.enums.PointReason;
+import com.bytehealers.healverse.dto.response.GamificationSummaryDTO;
 import com.bytehealers.healverse.exception.ResourceNotFoundException;
 import com.bytehealers.healverse.model.*;
 import com.bytehealers.healverse.repo.*;

@@ -1,6 +1,6 @@
 package com.bytehealers.healverse.service;
 
-import com.bytehealers.healverse.dto.UserProfileDTO;
+import com.bytehealers.healverse.dto.request.UserProfileDTO;
 import com.bytehealers.healverse.dto.request.RegisterRequest;
 import com.bytehealers.healverse.exception.DuplicateResourceException;
 import com.bytehealers.healverse.exception.ResourceNotFoundException;

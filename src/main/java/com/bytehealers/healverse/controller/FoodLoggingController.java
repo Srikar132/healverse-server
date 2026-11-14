@@ -1,10 +1,10 @@
 package com.bytehealers.healverse.controller;
 
+import com.bytehealers.healverse.model.enums.MealType;
 import com.bytehealers.healverse.dto.request.FoodLogRequest;
 import com.bytehealers.healverse.dto.response.ApiResponse;
 import com.bytehealers.healverse.exception.BadRequestException;
 import com.bytehealers.healverse.dto.response.FoodLogResponse;
-import com.bytehealers.healverse.model.MealType;
 import com.bytehealers.healverse.service.FoodLoggingService;
 import com.bytehealers.healverse.security.CurrentUserId;
 import lombok.RequiredArgsConstructor;

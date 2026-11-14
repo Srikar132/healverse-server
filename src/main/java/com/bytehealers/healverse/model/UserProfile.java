@@ -1,5 +1,11 @@
 package com.bytehealers.healverse.model;
 
+import com.bytehealers.healverse.model.enums.ActivityLevel;
+import com.bytehealers.healverse.model.enums.DietaryRestriction;
+import com.bytehealers.healverse.model.enums.Gender;
+import com.bytehealers.healverse.model.enums.Goal;
+import com.bytehealers.healverse.model.enums.HealthCondition;
+import com.bytehealers.healverse.model.enums.WeightLossSpeed;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
