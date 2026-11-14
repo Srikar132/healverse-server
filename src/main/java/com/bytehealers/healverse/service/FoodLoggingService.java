@@ -10,6 +10,9 @@ import com.bytehealers.healverse.repo.FoodLogRepository;
 import com.bytehealers.healverse.repo.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.util.MimeType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,6 +47,15 @@ public class FoodLoggingService {
     private final ObjectMapper objectMapper;
 
     private final GamificationService gamificationService;
+
+    @Value("${app.ai.vision-model}")
+    private String visionModel;
+
+    @Value("${app.ai.max-tokens:4000}")
+    private Integer maxTokens;
+
+    private static final List<MimeType> SUPPORTED_IMAGE_TYPES = List.of(
+            MimeTypeUtils.IMAGE_JPEG, MimeTypeUtils.IMAGE_PNG, MimeTypeUtils.parseMimeType("image/webp"));
 
 
     private static final String FOOD_ANALYSIS_PROMPT = """
@@ -98,7 +110,9 @@ public class FoodLoggingService {
                     .user(String.format(FOOD_ANALYSIS_PROMPT, request.getDescription()))
                     .call()
                     .content();
-            aiFoodResponse = objectMapper.readValue(aiResponse, AIFoodResponse.class);
+            String cleanedResponse = cleanJsonResponse(aiResponse)
+                    .orElseThrow(() -> new IllegalStateException("AI response was empty or invalid"));
+            aiFoodResponse = objectMapper.readValue(cleanedResponse, AIFoodResponse.class);
         } catch (Exception e) {
             throw new ExternalServiceException("The AI service could not analyze the food description. Please try again.", e);
         }
@@ -108,12 +122,20 @@ public class FoodLoggingService {
     }
 
     public FoodLogResponse logFoodByImage(Long userId, MultipartFile image, FoodLogRequest request) {
+        MimeType imageType = supportedImageType(image);
+
         AIFoodResponse aiFoodResponse;
         try {
             String aiResponse = chatClient.prompt()
+                    // Per-call override: photos go to the vision model, text keeps the default model.
+                    .options(OpenAiChatOptions.builder()
+                            .model(visionModel)
+                            .maxCompletionTokens(maxTokens)
+                            .temperature(0.2)
+                            .build())
                     .user(userSpec -> userSpec
                             .text(IMAGE_ANALYSIS_PROMPT)
-                            .media(MimeTypeUtils.IMAGE_JPEG, image.getResource()))
+                            .media(imageType, image.getResource()))
                     .call()
                     .content();
 
@@ -131,6 +153,19 @@ public class FoodLoggingService {
 
         // TODO: gamification points are disabled here (StackOverflowError - investigate gamification recursion)
         return res;
+    }
+
+    private static MimeType supportedImageType(MultipartFile image) {
+        MimeType type;
+        try {
+            type = MimeTypeUtils.parseMimeType(String.valueOf(image.getContentType()));
+        } catch (Exception e) {
+            throw new BadRequestException("Unsupported image type. Use JPEG, PNG or WebP.");
+        }
+        return SUPPORTED_IMAGE_TYPES.stream()
+                .filter(supported -> supported.equalsTypeAndSubtype(type))
+                .findFirst()
+                .orElseThrow(() -> new BadRequestException("Unsupported image type. Use JPEG, PNG or WebP."));
     }
 
     private Optional<String> cleanJsonResponse(String response) {

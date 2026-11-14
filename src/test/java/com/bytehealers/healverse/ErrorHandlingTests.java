@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -22,6 +23,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -124,12 +126,30 @@ class ErrorHandlingTests {
     }
 
     @Test
-    void invalidVoiceSessionIdIs400() throws Exception {
+    void voiceAssistantIsSwitchedOffByDefault() throws Exception {
         Map<String, Object> user = registerUser();
 
         assertErrorEnvelope(
-                mockMvc.perform(delete("/api/voice-chat/bad$id").header("Authorization", bearer(user))),
-                400, "Invalid session id");
+                mockMvc.perform(delete("/api/voice-chat/session1").header("Authorization", bearer(user))),
+                410, "The voice assistant is currently unavailable");
+        assertErrorEnvelope(
+                mockMvc.perform(post("/api/voice-chat/text-to-speech")
+                        .header("Authorization", bearer(user))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"text\":\"hello\"}")),
+                410, "The voice assistant is currently unavailable");
+    }
+
+    @Test
+    void unsupportedImageTypeIs400BeforeAnyAiCall() throws Exception {
+        Map<String, Object> user = registerUser();
+
+        assertErrorEnvelope(
+                mockMvc.perform(multipart("/api/food-logs/log/image")
+                        .file(new MockMultipartFile("image", "meal.gif", "image/gif", new byte[]{1, 2, 3}))
+                        .file(new MockMultipartFile("mealType", "", "text/plain", "LUNCH".getBytes()))
+                        .header("Authorization", bearer(user))),
+                400, "Unsupported image type. Use JPEG, PNG or WebP.");
     }
 
     @Test

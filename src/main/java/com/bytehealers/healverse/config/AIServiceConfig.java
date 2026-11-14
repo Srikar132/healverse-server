@@ -20,8 +20,11 @@ import org.springframework.retry.annotation.EnableRetry;
 @Slf4j
 public class AIServiceConfig {
 
-    @Value("${app.ai.max-tokens:2000}")
+    @Value("${app.ai.max-tokens:4000}")
     private Integer maxTokens;
+
+    @Value("${app.ai.reasoning-effort:}")
+    private String reasoningEffort;
 
     @Value("${app.ai.temperature:0.7}")
     private Double temperature;
@@ -33,8 +36,9 @@ public class AIServiceConfig {
     public ChatClient chatClient(OpenAiChatModel chatModel) {
         return ChatClient.builder(chatModel)
                 .defaultOptions(OpenAiChatOptions.builder()
-                        .maxTokens(maxTokens)
+                        .maxCompletionTokens(maxTokens)
                         .temperature(temperature)
+                        .reasoningEffort(reasoningEffort.isBlank() ? null : reasoningEffort)
                         .build()
                 )
                 .build();

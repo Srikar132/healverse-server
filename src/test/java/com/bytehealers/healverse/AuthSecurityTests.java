@@ -130,11 +130,10 @@ class AuthSecurityTests {
     void voiceChatAcceptsValidToken() throws Exception {
         String token = data(register(registerBody(uniqueUsername("voice"), "valid-pass"), 200)).get("token").asText();
 
-        // Clearing the caller's own (empty) session succeeds
+        // Authentication passes (not 401); the voice feature itself is switched off by default (410 Gone).
+        // Behaviour with the flag on is covered by VoiceEnabledTests.
         mockMvc.perform(delete("/api/voice-chat/default").header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk());
-        mockMvc.perform(delete("/api/voice-chat/bad%20session").header("Authorization", "Bearer " + token))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isGone());
     }
 
     @Test

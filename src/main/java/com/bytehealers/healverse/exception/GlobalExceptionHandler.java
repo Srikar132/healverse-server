@@ -52,6 +52,11 @@ public class GlobalExceptionHandler {
         return respond(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage());
     }
 
+    @ExceptionHandler(FeatureDisabledException.class)
+    public ResponseEntity<ApiResponse<Void>> handleFeatureDisabled(FeatureDisabledException ex) {
+        return respond(HttpStatus.GONE, ex.getMessage());
+    }
+
     @ExceptionHandler(ExternalServiceException.class)
     public ResponseEntity<ApiResponse<Void>> handleExternalService(ExternalServiceException ex) {
         logger.error("External service failure: {}", ex.getMessage(), ex);
