@@ -1,5 +1,6 @@
 package com.bytehealers.healverse.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 import java.math.BigDecimal;
@@ -43,8 +44,13 @@ public class UserProfileDTO {
 
     private DietaryRestriction dietaryRestriction = DietaryRestriction.NON_VEGETARIAN;
 
+    // The mobile client sends this as "healthCondition"
+    @JsonAlias("healthCondition")
     private HealthCondition healthConditions;
 
     private String otherHealthConditionDescription;
+
+    @Size(max = 255, message = "Address cannot exceed 255 characters")
+    private String address;
 
 }

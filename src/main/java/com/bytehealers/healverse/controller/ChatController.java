@@ -28,21 +28,6 @@ public class ChatController {
     private UserContext userContext;
 
     /**
-     * Test OpenAI connection - simple health check
-     */
-    @GetMapping("/test")
-    public ResponseEntity<ApiResponse<String>> testOpenAI() {
-        try {
-            String testResponse = chatService.testOpenAIConnection();
-            return ResponseEntity.ok(ApiResponse.success("OpenAI connection test successful", testResponse));
-        } catch (Exception e) {
-            log.error("OpenAI connection test failed", e);
-            return ResponseEntity.internalServerError()
-                    .body(ApiResponse.error("OpenAI connection test failed: " + e.getMessage()));
-        }
-    }
-
-    /**
      * Send a message in a conversation
      */
     @PostMapping("/{conversationId}/messages")
@@ -78,14 +63,6 @@ public class ChatController {
             return ResponseEntity.internalServerError()
                     .body(ApiResponse.error("Failed to fetch messages"));
         }
-    }
-
-    /**
-     * Health check endpoint
-     */
-    @GetMapping("/health")
-    public ResponseEntity<ApiResponse<String>> health() {
-        return ResponseEntity.ok(ApiResponse.success("Chat service is running", "OK"));
     }
 
     /**

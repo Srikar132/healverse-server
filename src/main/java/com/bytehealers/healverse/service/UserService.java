@@ -1,6 +1,8 @@
 package com.bytehealers.healverse.service;
 
 import com.bytehealers.healverse.dto.UserProfileDTO;
+import com.bytehealers.healverse.dto.request.RegisterRequest;
+import com.bytehealers.healverse.exception.DuplicateResourceException;
 import com.bytehealers.healverse.exception.ResourceNotFoundException;
 import com.bytehealers.healverse.model.User;
 import com.bytehealers.healverse.model.UserProfile;
@@ -31,18 +33,33 @@ public class UserService {
 
 
     @Transactional
-    public User registerUser(User user, UserProfile profile) {
-        // Encode password if provided
-        if (user.getPassword() != null && !user.getPassword().isEmpty()) {
-            user.setPassword(passwordEncoder.encode(user.getPassword()));
+    public User registerUser(RegisterRequest request) {
+        RegisterRequest.Credentials credentials = request.getUser();
+        String username = credentials.getUsername().trim();
+        String email = (credentials.getEmail() == null || credentials.getEmail().isBlank())
+                ? null
+                : credentials.getEmail().trim();
+
+        if (userRepository.existsByUsername(username)) {
+            throw new DuplicateResourceException("Username is already taken");
+        }
+        if (email != null && userRepository.existsByEmail(email)) {
+            throw new DuplicateResourceException("Email is already registered");
         }
 
-        // Save user first
+        // Always a brand-new entity: nothing from the request can address an existing row
+        User user = new User();
+        user.setUsername(username);
+        user.setEmail(email);
+        user.setPassword(passwordEncoder.encode(credentials.getPassword()));
+
         User savedUser = userRepository.save(user);
 
-        // Set the user reference in profile and save
-        if (profile != null) {
+        UserProfileDTO profileDTO = request.getProfile();
+        if (profileDTO != null) {
+            UserProfile profile = new UserProfile();
             profile.setUser(savedUser);
+            applyProfile(profile, profileDTO);
             userProfileService.createProfile(profile);
             savedUser.setProfile(profile);
         }
@@ -50,30 +67,28 @@ public class UserService {
         return savedUser;
     }
 
+    private void applyProfile(UserProfile profile, UserProfileDTO dto) {
+        profile.setGender(dto.getGender());
+        profile.setAge(dto.getAge());
+        profile.setHeightCm(dto.getHeightCm());
+        profile.setCurrentWeightKg(dto.getCurrentWeightKg());
+        profile.setTargetWeightKg(dto.getTargetWeightKg());
+        profile.setActivityLevel(dto.getActivityLevel());
+        profile.setGoal(dto.getGoal());
+        profile.setWeightLossSpeed(dto.getWeightLossSpeed());
+        profile.setDietaryRestriction(dto.getDietaryRestriction());
+        if (dto.getHealthConditions() != null) {
+            profile.setHealthCondition(dto.getHealthConditions());
+        }
+        profile.setOtherHealthConditionDescription(dto.getOtherHealthConditionDescription());
+        // Optional fields keep their stored value when the client omits them
+        if (dto.getAddress() != null) {
+            profile.setAddress(dto.getAddress());
+        }
+    }
+
     public Optional<User> findByUsername(String username) {
         return userRepository.findByUsername(username);
-    }
-
-    public boolean existsByUsername(String username) {
-        return userRepository.existsByUsername(username);
-    }
-
-    public boolean existsByEmail(String email) {
-        return userRepository.existsByEmail(email);
-    }
-
-    public Optional<User> findByEmail(String email) {
-        return userRepository.findByEmail(email);
-    }
-
-    public Optional<User> findByGoogleId(String googleId) {
-        return userRepository.findByGoogleId(googleId);
-    }
-
-    public UserProfile getUserProfile(String username) {
-        return userRepository.findByUsername(username)
-                .map(User::getProfile)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "username", username));
     }
 
     public UserProfile createUserProfile(Long userId, @Valid UserProfileDTO profileDTO) {
@@ -82,17 +97,7 @@ public class UserService {
                 
         UserProfile profile = new UserProfile();
         profile.setUser(user);
-        profile.setGender(profileDTO.getGender());
-        profile.setAge(profileDTO.getAge());
-        profile.setHeightCm(profileDTO.getHeightCm());
-        profile.setCurrentWeightKg(profileDTO.getCurrentWeightKg());
-        profile.setTargetWeightKg(profileDTO.getTargetWeightKg());
-        profile.setActivityLevel(profileDTO.getActivityLevel());
-        profile.setGoal(profileDTO.getGoal());
-        profile.setWeightLossSpeed(profileDTO.getWeightLossSpeed());
-        profile.setDietaryRestriction(profileDTO.getDietaryRestriction());
-        profile.setHealthCondition(profileDTO.getHealthConditions());
-        profile.setOtherHealthConditionDescription(profileDTO.getOtherHealthConditionDescription());
+        applyProfile(profile, profileDTO);
 
         user.setProfile(profile);
         return userProfileService.createProfile(profile);
@@ -114,19 +119,8 @@ public class UserService {
         UserProfile existingProfile = userProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("UserProfile", "userId", userId));
                 
-        // Update profile fields
-        existingProfile.setGender(profileDTO.getGender());
-        existingProfile.setAge(profileDTO.getAge());
-        existingProfile.setHeightCm(profileDTO.getHeightCm());
-        existingProfile.setCurrentWeightKg(profileDTO.getCurrentWeightKg());
-        existingProfile.setTargetWeightKg(profileDTO.getTargetWeightKg());
-        existingProfile.setActivityLevel(profileDTO.getActivityLevel());
-        existingProfile.setGoal(profileDTO.getGoal());
-        existingProfile.setWeightLossSpeed(profileDTO.getWeightLossSpeed());
-        existingProfile.setDietaryRestriction(profileDTO.getDietaryRestriction());
-        existingProfile.setHealthCondition(profileDTO.getHealthConditions());
-        existingProfile.setOtherHealthConditionDescription(profileDTO.getOtherHealthConditionDescription());
-        
+        applyProfile(existingProfile, profileDTO);
+
         return userProfileService.updateProfile(existingProfile);
     }
 
