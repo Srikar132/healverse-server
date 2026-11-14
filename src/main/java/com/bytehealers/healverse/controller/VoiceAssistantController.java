@@ -1,14 +1,15 @@
 package com.bytehealers.healverse.controller;
 
 import com.bytehealers.healverse.dto.request.TextRequest;
+import com.bytehealers.healverse.dto.response.ApiResponse;
 import com.bytehealers.healverse.dto.response.TextResponse;
+import com.bytehealers.healverse.exception.BadRequestException;
 import com.bytehealers.healverse.dto.response.VoiceChatResponse;
 import com.bytehealers.healverse.service.VoiceAssistantService;
 import com.bytehealers.healverse.util.UserContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -44,7 +45,7 @@ public class VoiceAssistantController {
     private String sessionKey(String sessionId) {
         String clientSession = (sessionId == null || sessionId.isBlank()) ? "default" : sessionId.trim();
         if (!SESSION_ID_PATTERN.matcher(clientSession).matches()) {
-            throw new IllegalArgumentException("Invalid session id");
+            throw new BadRequestException("Invalid session id");
         }
         return userContext.getCurrentUserId() + ":" + clientSession;
     }
@@ -55,122 +56,53 @@ public class VoiceAssistantController {
             @RequestHeader(value = "X-Session-ID", required = false) String sessionId) {
 
         logger.info("Received ask-ai request");
-
-        try {
-            String sessionKey = sessionKey(sessionId);
-
-            TextResponse response = voiceAssistantService.processAIRequest(request.getText(), sessionKey);
-            return ResponseEntity.ok(response);
-
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(new TextResponse(null, "Invalid session id"));
-        } catch (Exception e) {
-            logger.error("Error in askAI endpoint: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new TextResponse(null, "Unable to process request"));
-        }
+        return ResponseEntity.ok(voiceAssistantService.processAIRequest(request.getText(), sessionKey(sessionId)));
     }
 
     @PostMapping("/text-to-speech")
-    public ResponseEntity<?> textToSpeech(@Valid @RequestBody TextRequest request) {
+    public ResponseEntity<Map<String, String>> textToSpeech(@Valid @RequestBody TextRequest request) {
         logger.info("Received TTS request");
 
-        try {
-            byte[] audioBytes = voiceAssistantService.generateSpeech(request.getText());
-
-            // Convert audio to base64
-            String audioBase64 = Base64.getEncoder().encodeToString(audioBytes);
-
-            // Return as JSON
-            return ResponseEntity.ok()
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(Map.of("audioBase64", audioBase64));
-
-        } catch (Exception e) {
-            logger.error("Error in textToSpeech endpoint: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(new TextResponse(request.getText(), "TTS failed, returning text"));
-        }
+        byte[] audioBytes = voiceAssistantService.generateSpeech(request.getText());
+        return ResponseEntity.ok(Map.of("audioBase64", Base64.getEncoder().encodeToString(audioBytes)));
     }
+
     @PostMapping("/")
-    public ResponseEntity<?> voiceChat(
+    public ResponseEntity<byte[]> voiceChat(
             @Valid @RequestBody TextRequest request,
             @RequestHeader(value = "X-Session-ID", required = false) String sessionId) {
 
         logger.info("Received voice-chat request");
 
-        try {
-            String sessionKey = sessionKey(sessionId);
+        byte[] audioBytes = voiceAssistantService.processVoiceChat(request.getText(), sessionKey(sessionId));
 
-            byte[] audioBytes = voiceAssistantService.processVoiceChat(request.getText(), sessionKey);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.valueOf("audio/mpeg"));
+        headers.setContentLength(audioBytes.length);
+        headers.set("Content-Disposition", "inline; filename=\"response.mp3\"");
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.valueOf("audio/mpeg"));
-            headers.setContentLength(audioBytes.length);
-            headers.set("Content-Disposition", "inline; filename=\"response.mp3\"");
-
-            return ResponseEntity.ok().headers(headers).body(audioBytes);
-
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest()
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(new TextResponse(null, "Invalid session id"));
-        } catch (Exception e) {
-            logger.error("Error in voiceChat endpoint: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(new TextResponse(request.getText(), "Voice chat failed, returning text"));
-        }
+        return ResponseEntity.ok().headers(headers).body(audioBytes);
     }
 
     @PostMapping("/voice-chat-with-text")
-    public ResponseEntity<?> voiceChatWithText(
+    public ResponseEntity<VoiceChatResponse> voiceChatWithText(
             @Valid @RequestBody TextRequest request,
             @RequestHeader(value = "X-Session-ID", required = false) String sessionId) {
 
         logger.info("Received voice-chat-with-text request");
 
-        try {
-            String sessionKey = sessionKey(sessionId);
+        TextResponse aiResponse = voiceAssistantService.processAIRequest(request.getText(), sessionKey(sessionId));
+        byte[] audioBytes = voiceAssistantService.generateSpeech(aiResponse.getResponse());
 
-            // Get AI response text
-            TextResponse aiResponse = voiceAssistantService.processAIRequest(request.getText(), sessionKey);
-
-            // Generate audio from the response
-            byte[] audioBytes = voiceAssistantService.generateSpeech(aiResponse.getResponse());
-
-            // Convert audio to base64
-            String audioBase64 = Base64.getEncoder().encodeToString(audioBytes);
-
-            // Create combined response
-            VoiceChatResponse response = new VoiceChatResponse();
-            response.setTextResponse(aiResponse.getResponse());
-            response.setAudioBase64(audioBase64);
-
-            return ResponseEntity.ok()
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(response);
-
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest()
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(new TextResponse(null, "Invalid session id"));
-        } catch (Exception e) {
-            logger.error("Error in voiceChatWithText endpoint: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(new TextResponse(request.getText(), "Voice chat failed"));
-        }
+        VoiceChatResponse response = new VoiceChatResponse();
+        response.setTextResponse(aiResponse.getResponse());
+        response.setAudioBase64(Base64.getEncoder().encodeToString(audioBytes));
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{sessionId}")
-    public ResponseEntity<String> clearConversation(@PathVariable String sessionId) {
-        try {
-            voiceAssistantService.clearConversationHistory(sessionKey(sessionId));
-            return ResponseEntity.ok("Conversation history cleared");
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body("Invalid session id");
-        }
+    public ResponseEntity<ApiResponse<Void>> clearConversation(@PathVariable String sessionId) {
+        voiceAssistantService.clearConversationHistory(sessionKey(sessionId));
+        return ResponseEntity.ok(ApiResponse.success("Conversation history cleared", null));
     }
 }

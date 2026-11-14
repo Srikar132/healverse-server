@@ -26,45 +26,29 @@ public class UserController {
 
     @GetMapping("/profile")
     public ResponseEntity<ApiResponse<UserProfile>> getUserProfile() {
-        try {
-            Long userId = userContext.getCurrentUserId();
-            UserProfile profile = userService.getUserProfileById(userId).orElseThrow(() -> new ResourceNotFoundException("User with id: " + userId + " not found"));
+        Long userId = userContext.getCurrentUserId();
+        UserProfile profile = userService.getUserProfileById(userId).orElseThrow(() -> new ResourceNotFoundException("User with id: " + userId + " not found"));
 
-            return ResponseEntity.ok(ApiResponse.success("User profile retrieved successfully", profile));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to retrieve user profile: " + e.getMessage()));
-        }
+        return ResponseEntity.ok(ApiResponse.success("User profile retrieved successfully", profile));
     }
 
     @PostMapping("/profile")
     public ResponseEntity<ApiResponse<UserProfile>> createUserProfile(@Valid @RequestBody UserProfileDTO profileDTO) {
-        try {
-            Long userId = userContext.getCurrentUserId();
-            UserProfile profile = userService.createUserProfile(userId, profileDTO);
-            return ResponseEntity.ok(ApiResponse.success("User profile created successfully", profile));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to create user profile: " + e.getMessage()));
-        }
+        Long userId = userContext.getCurrentUserId();
+        UserProfile profile = userService.createUserProfile(userId, profileDTO);
+        return ResponseEntity.ok(ApiResponse.success("User profile created successfully", profile));
     }
 
     @PutMapping("/profile")
     public ResponseEntity<ApiResponse<UserProfile>> updateUserProfile(@Valid @RequestBody UserProfileDTO profileDTO) {
-        try {
-            Long userId = userContext.getCurrentUserId();
-            UserProfile profile = userService.updateUserProfile(userId, profileDTO);
-            return ResponseEntity.ok(ApiResponse.success("User profile updated successfully", profile));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to update user profile: " + e.getMessage()));
-        }
+        Long userId = userContext.getCurrentUserId();
+        UserProfile profile = userService.updateUserProfile(userId, profileDTO);
+        return ResponseEntity.ok(ApiResponse.success("User profile updated successfully", profile));
     }
 
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<Long>> getCurrentUserId() {
-        try {
-            Long userId = userContext.getCurrentUserId();
-            return ResponseEntity.ok(ApiResponse.success("Current user ID retrieved successfully", userId));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to retrieve current user ID: " + e.getMessage()));
-        }
+        Long userId = userContext.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.success("Current user ID retrieved successfully", userId));
     }
 }

@@ -35,15 +35,9 @@ public class ChatController {
             @PathVariable String conversationId,
             @Valid @RequestBody SendMessageRequest request,
             Authentication authentication) {
-        try {
-            Long userId = userContext.getCurrentUserId();
-            MessageResponse response = chatService.sendMessage(conversationId, userId, request);
-            return ResponseEntity.ok(ApiResponse.success("Message sent successfully", response));
-        } catch (Exception e) {
-            log.error("Error sending message for conversation: " + conversationId, e);
-            return ResponseEntity.internalServerError()
-                    .body(ApiResponse.error("Failed to send message"));
-        }
+        Long userId = userContext.getCurrentUserId();
+        MessageResponse response = chatService.sendMessage(conversationId, userId, request);
+        return ResponseEntity.ok(ApiResponse.success("Message sent successfully", response));
     }
 
     /**
@@ -54,15 +48,9 @@ public class ChatController {
             @PathVariable String conversationId,
             Authentication authentication) {
 
-        try {
-            Long userId = userContext.getCurrentUserId();
-            List<MessageResponse> messages = chatService.getMessages(conversationId, userId);
-            return ResponseEntity.ok(ApiResponse.success("Messages fetched successfully", messages));
-        } catch (Exception e) {
-            log.error("Error fetching messages for conversation: " + conversationId, e);
-            return ResponseEntity.internalServerError()
-                    .body(ApiResponse.error("Failed to fetch messages"));
-        }
+        Long userId = userContext.getCurrentUserId();
+        List<MessageResponse> messages = chatService.getMessages(conversationId, userId);
+        return ResponseEntity.ok(ApiResponse.success("Messages fetched successfully", messages));
     }
 
     /**
@@ -70,15 +58,9 @@ public class ChatController {
      */
     @GetMapping("/")
     public ResponseEntity<ApiResponse<List<Conversation>>> getAllConversations() {
-        try {
-            Long userId = userContext.getCurrentUserId();
-            List<Conversation> conversations = chatService.getAllConversations(userId);
-            return ResponseEntity.ok(ApiResponse.success("Conversations fetched successfully", conversations));
-        } catch (Exception e) {
-            log.error("Error fetching all conversations", e);
-            return ResponseEntity.internalServerError()
-                    .body(ApiResponse.error("Failed to fetch conversations"));
-        }
+        Long userId = userContext.getCurrentUserId();
+        List<Conversation> conversations = chatService.getAllConversations(userId);
+        return ResponseEntity.ok(ApiResponse.success("Conversations fetched successfully", conversations));
     }
 
 

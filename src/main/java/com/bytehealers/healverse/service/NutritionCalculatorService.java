@@ -1,5 +1,6 @@
 package com.bytehealers.healverse.service;
 
+import com.bytehealers.healverse.exception.*;
 import com.bytehealers.healverse.model.*;
 import org.springframework.stereotype.Service;
 
@@ -33,11 +34,11 @@ public class NutritionCalculatorService {
 
         // Safety check: BMR should never be below 800 or above 4000 calories
         if (bmr.compareTo(BigDecimal.valueOf(800)) < 0) {
-            throw new IllegalArgumentException(
+            throw new BadRequestException(
                     "Calculated BMR is dangerously low: " + bmr + " calories. Please verify user data.");
         }
         if (bmr.compareTo(BigDecimal.valueOf(4000)) > 0) {
-            throw new IllegalArgumentException(
+            throw new BadRequestException(
                     "Calculated BMR is unusually high: " + bmr + " calories. Please verify user data.");
         }
 
@@ -89,23 +90,23 @@ public class NutritionCalculatorService {
         if (profile.getCurrentWeightKg() == null || profile.getCurrentWeightKg().compareTo(BigDecimal.valueOf(20)) < 0
                 ||
                 profile.getCurrentWeightKg().compareTo(BigDecimal.valueOf(300)) > 0) {
-            throw new IllegalArgumentException("Invalid weight: " + profile.getCurrentWeightKg() +
+            throw new BadRequestException("Invalid weight: " + profile.getCurrentWeightKg() +
                     "kg. Weight must be between 20-300kg.");
         }
 
         if (profile.getHeightCm() == null || profile.getHeightCm().compareTo(BigDecimal.valueOf(100)) < 0 ||
                 profile.getHeightCm().compareTo(BigDecimal.valueOf(250)) > 0) {
-            throw new IllegalArgumentException("Invalid height: " + profile.getHeightCm() +
+            throw new BadRequestException("Invalid height: " + profile.getHeightCm() +
                     "cm. Height must be between 100-250cm.");
         }
 
         if (profile.getAge() < 12 || profile.getAge() > 120) {
-            throw new IllegalArgumentException("Invalid age: " + profile.getAge() +
+            throw new BadRequestException("Invalid age: " + profile.getAge() +
                     ". Age must be between 12-120 years.");
         }
 
         if (profile.getGender() == null) {
-            throw new IllegalArgumentException("Gender is required for BMR calculation.");
+            throw new BadRequestException("Gender is required for BMR calculation.");
         }
     }
 

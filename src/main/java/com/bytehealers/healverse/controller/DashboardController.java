@@ -26,66 +26,41 @@ public class DashboardController {
 
     @GetMapping("/today")
     public ResponseEntity<ApiResponse<DashboardResponse>> getTodaysDashboard() {
-        try {
-            Long userId = userContext.getCurrentUserId();
-            DashboardResponse dashboard = dashboardService.getTodaysDashboard(userId);
-            return ResponseEntity.ok(ApiResponse.success("Today's dashboard retrieved successfully", dashboard));
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError()
-                    .body(ApiResponse.error("Failed to retrieve dashboard: " + e.getMessage()));
-        }
+        Long userId = userContext.getCurrentUserId();
+        DashboardResponse dashboard = dashboardService.getTodaysDashboard(userId);
+        return ResponseEntity.ok(ApiResponse.success("Today's dashboard retrieved successfully", dashboard));
     }
 
     @GetMapping("/{date}")
     public ResponseEntity<ApiResponse<DashboardResponse>> getDashboardByDate(
             @PathVariable @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate date
     ) {
-        try {
-            Long userId = userContext.getCurrentUserId();
-            DashboardResponse dashboard = dashboardService.getDashboard(userId, date);
-            return ResponseEntity.ok(ApiResponse.success("Dashboard retrieved successfully", dashboard));
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError()
-                    .body(ApiResponse.error("Failed to retrieve dashboard: " + e.getMessage()));
-        }
+        Long userId = userContext.getCurrentUserId();
+        DashboardResponse dashboard = dashboardService.getDashboard(userId, date);
+        return ResponseEntity.ok(ApiResponse.success("Dashboard retrieved successfully", dashboard));
     }
 
     @GetMapping("/weekly")
     public ResponseEntity<ApiResponse<List<DailyNutritionSummary>>> getWeeklySummary() {
-        try {
-            Long userId = userContext.getCurrentUserId();
-            List<DailyNutritionSummary> weeklySummary = dashboardService.getWeeklySummary(userId);
-            return ResponseEntity.ok(ApiResponse.success("Weekly summary retrieved successfully", weeklySummary));
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError()
-                    .body(ApiResponse.error("Failed to retrieve weekly summary: " + e.getMessage()));
-        }
+        Long userId = userContext.getCurrentUserId();
+        List<DailyNutritionSummary> weeklySummary = dashboardService.getWeeklySummary(userId);
+        return ResponseEntity.ok(ApiResponse.success("Weekly summary retrieved successfully", weeklySummary));
     }
 
     @GetMapping("/summary/{date}")
     public ResponseEntity<ApiResponse<DailyNutritionSummary>> getSummaryByDate(
             @PathVariable @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate date) {
-        try {
-            Long userId = userContext.getCurrentUserId();
-            DailyNutritionSummary summary = dashboardService.getSummaryByDate(userId, date);
-            return ResponseEntity.ok(ApiResponse.success("Summary retrieved successfully", summary));
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError()
-                    .body(ApiResponse.error("Failed to retrieve summary: " + e.getMessage()));
-        }
+        Long userId = userContext.getCurrentUserId();
+        DailyNutritionSummary summary = dashboardService.getSummaryByDate(userId, date);
+        return ResponseEntity.ok(ApiResponse.success("Summary retrieved successfully", summary));
     }
 
     @GetMapping("/stats")
     public ResponseEntity<ApiResponse<NutritionStats>> getNutritionStats(
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate) {
-        try {
-            Long userId = userContext.getCurrentUserId();
-            NutritionStats stats = dashboardService.getNutritionStats(userId, startDate, endDate);
-            return ResponseEntity.ok(ApiResponse.success("Nutrition stats retrieved successfully", stats));
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError()
-                    .body(ApiResponse.error("Failed to retrieve nutrition stats: " + e.getMessage()));
-        }
+        Long userId = userContext.getCurrentUserId();
+        NutritionStats stats = dashboardService.getNutritionStats(userId, startDate, endDate);
+        return ResponseEntity.ok(ApiResponse.success("Nutrition stats retrieved successfully", stats));
     }
 }

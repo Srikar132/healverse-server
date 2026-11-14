@@ -1,5 +1,6 @@
 package com.bytehealers.healverse.service;
 
+import com.bytehealers.healverse.exception.*;
 import com.bytehealers.healverse.dto.request.LogWaterRequest;
 import com.bytehealers.healverse.dto.request.QuickWaterLogRequest;
 import com.bytehealers.healverse.model.User;
@@ -107,7 +108,7 @@ public class WaterLoggingService {
         WaterLog waterLog = existingLog.get();
 
         if (!waterLog.getUser().getId().equals(userId)) {
-            throw new RuntimeException("Unauthorized access");
+            throw new ResourceNotFoundException("Water log not found");
         }
 
         LocalDateTime loggedAt = waterLog.getLoggedAt();
@@ -121,6 +122,6 @@ public class WaterLoggingService {
 
     private User getUserOrThrow(Long userId) {
         return userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found for ID: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 }

@@ -1,5 +1,6 @@
 package com.bytehealers.healverse.service;
 
+import com.bytehealers.healverse.exception.*;
 import com.bytehealers.healverse.dto.response.MessageResponse;
 import com.bytehealers.healverse.dto.request.SendMessageRequest;
 import com.bytehealers.healverse.model.*;
@@ -95,7 +96,7 @@ public class ChatService {
     public List<MessageResponse> getMessages(String conversationId, Long userId) {
         // Verify conversation belongs to user
         if (!conversationRepository.existsByIdAndUserId(conversationId, userId)) {
-            throw new RuntimeException("Conversation not found or access denied");
+            throw new ResourceNotFoundException("Conversation not found");
         }
 
         List<com.bytehealers.healverse.model.Message> messages =
@@ -110,7 +111,7 @@ public class ChatService {
         return conversationRepository.findByIdAndUserId(conversationId, userId)
                 .orElseGet(() -> {
                     User user = userRepository.findById(userId)
-                            .orElseThrow(() -> new RuntimeException("User not found"));
+                            .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
                     Conversation newConversation = new Conversation();
                     newConversation.setId(conversationId);

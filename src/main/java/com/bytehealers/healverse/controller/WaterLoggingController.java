@@ -28,86 +28,58 @@ public class WaterLoggingController {
 
     @PostMapping("/log")
     public ResponseEntity<ApiResponse<WaterLog>> logWater(@Valid @RequestBody LogWaterRequest request) {
-        try {
-            Long userId = userContext.getCurrentUserId();
-            WaterLog waterLog = waterLoggingService.logWater(request, userId);
-            return ResponseEntity.ok(ApiResponse.success("Water intake logged successfully", waterLog));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to log water intake: " + e.getMessage()));
-        }
+        Long userId = userContext.getCurrentUserId();
+        WaterLog waterLog = waterLoggingService.logWater(request, userId);
+        return ResponseEntity.ok(ApiResponse.success("Water intake logged successfully", waterLog));
     }
 
     @PostMapping("/quick")
     public ResponseEntity<ApiResponse<WaterLog>> logQuickWater(@Valid @RequestBody QuickWaterLogRequest request) {
-        try {
-            Long userId = userContext.getCurrentUserId();
-            WaterLog waterLog = waterLoggingService.logQuickWater(request, userId);
-            return ResponseEntity.ok(ApiResponse.success("Quick water intake logged successfully", waterLog));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to log quick water intake: " + e.getMessage()));
-        }
+        Long userId = userContext.getCurrentUserId();
+        WaterLog waterLog = waterLoggingService.logQuickWater(request, userId);
+        return ResponseEntity.ok(ApiResponse.success("Quick water intake logged successfully", waterLog));
     }
 
     @GetMapping("/today")
     public ResponseEntity<ApiResponse<List<WaterLog>>> getTodaysWaterLogs() {
-        try {
-            Long userId = userContext.getCurrentUserId();
-            List<WaterLog> waterLogs = waterLoggingService.getTodaysWaterLogs(userId);
-            return ResponseEntity.ok(ApiResponse.success("Today's water logs retrieved successfully", waterLogs));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to retrieve water logs: " + e.getMessage()));
-        }
+        Long userId = userContext.getCurrentUserId();
+        List<WaterLog> waterLogs = waterLoggingService.getTodaysWaterLogs(userId);
+        return ResponseEntity.ok(ApiResponse.success("Today's water logs retrieved successfully", waterLogs));
     }
 
     @GetMapping("/{date}")
     public ResponseEntity<ApiResponse<List<WaterLog>>> getWaterLogsByDate(
             @PathVariable @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate date
     ) {
-        try {
-            Long userId = userContext.getCurrentUserId();
-            List<WaterLog> waterLogs = waterLoggingService.getWaterLogsByDate(userId, date);
-            return ResponseEntity.ok(ApiResponse.success("Today's water logs retrieved successfully", waterLogs));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to retrieve water logs: " + e.getMessage()));
-        }
+        Long userId = userContext.getCurrentUserId();
+        List<WaterLog> waterLogs = waterLoggingService.getWaterLogsByDate(userId, date);
+        return ResponseEntity.ok(ApiResponse.success("Today's water logs retrieved successfully", waterLogs));
     }
 
     @GetMapping("/today/total")
     public ResponseEntity<ApiResponse<BigDecimal>> getTotalWaterIntakeToday() {
-        try {
-            Long userId = userContext.getCurrentUserId();
-            BigDecimal totalIntake = waterLoggingService.getTotalWaterIntakeToday(userId);
-            return ResponseEntity.ok(ApiResponse.success("Total water intake retrieved successfully", totalIntake));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to retrieve total water intake: " + e.getMessage()));
-        }
+        Long userId = userContext.getCurrentUserId();
+        BigDecimal totalIntake = waterLoggingService.getTotalWaterIntakeToday(userId);
+        return ResponseEntity.ok(ApiResponse.success("Total water intake retrieved successfully", totalIntake));
     }
 
     @GetMapping("/range")
     public ResponseEntity<ApiResponse<List<WaterLog>>> getWaterLogsByDateRange(
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate) {
-        try {
-            Long userId = userContext.getCurrentUserId();
-            List<WaterLog> waterLogs = waterLoggingService.getWaterLogsByDateRange(userId ,  startDate, endDate);
-            return ResponseEntity.ok(ApiResponse.success("Water logs retrieved successfully", waterLogs));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to retrieve water logs: " + e.getMessage()));
-        }
+        Long userId = userContext.getCurrentUserId();
+        List<WaterLog> waterLogs = waterLoggingService.getWaterLogsByDateRange(userId ,  startDate, endDate);
+        return ResponseEntity.ok(ApiResponse.success("Water logs retrieved successfully", waterLogs));
     }
 
     @DeleteMapping("/{waterLogId}")
     public ResponseEntity<ApiResponse<String>> deleteWaterLog(@PathVariable Long waterLogId) {
-        try {
-            Long userId = userContext.getCurrentUserId();
-            boolean deleted = waterLoggingService.deleteWaterLog(waterLogId, userId);
-            if (deleted) {
-                return ResponseEntity.ok(ApiResponse.success("Water log deleted successfully", "Deleted"));
-            } else {
-                return ResponseEntity.notFound().build();
-            }
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to delete water log: " + e.getMessage()));
+        Long userId = userContext.getCurrentUserId();
+        boolean deleted = waterLoggingService.deleteWaterLog(waterLogId, userId);
+        if (deleted) {
+            return ResponseEntity.ok(ApiResponse.success("Water log deleted successfully", "Deleted"));
+        } else {
+            return ResponseEntity.notFound().build();
         }
     }
 }

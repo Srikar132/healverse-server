@@ -1,5 +1,6 @@
 package com.bytehealers.healverse.service;
 
+import com.bytehealers.healverse.exception.*;
 import com.bytehealers.healverse.model.*;
 import com.bytehealers.healverse.repo.DailyNutritionSummaryRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -42,35 +43,30 @@ public class AIRecommendationService {
      * Generates a complete diet plan for the user
      */
     public DietPlan generateDietPlan(User user) {
-        try {
-            UserProfile profile = user.getProfile();
-            if (profile == null) {
-                throw new IllegalArgumentException("User profile is required to generate diet plan");
-            }
-
-            log.info("Generating diet plan for user: {}", user.getUsername());
-
-            // Calculate nutritional requirements
-            BigDecimal targetCalories = nutritionCalculator.calculateTargetCalories(profile);
-
-            NutritionCalculatorService.MacroDistribution macros =
-                    nutritionCalculator.calculateMacros(targetCalories, profile.getGoal());
-
-            // Generate meals using AI
-            List<Meal> meals = generateMeals(profile, targetCalories, macros);
-
-            // Create and populate diet plan
-            DietPlan dietPlan = createDietPlan(user, meals, targetCalories, macros);
-
-            log.info("Successfully generated diet plan with {} meals for user: {}",
-                    meals.size(), user.getUsername());
-
-            return dietPlan;
-
-        } catch (Exception e) {
-            log.error("Failed to generate diet plan for user: {}", user.getUsername(), e);
-            throw new RuntimeException("Failed to generate diet plan: " + e.getMessage(), e);
+        UserProfile profile = user.getProfile();
+        if (profile == null) {
+            throw new BadRequestException("Complete your health profile before generating a diet plan");
         }
+
+        log.info("Generating diet plan for user: {}", user.getUsername());
+
+        // Calculate nutritional requirements
+        BigDecimal targetCalories = nutritionCalculator.calculateTargetCalories(profile);
+
+        NutritionCalculatorService.MacroDistribution macros =
+                nutritionCalculator.calculateMacros(targetCalories, profile.getGoal());
+
+        // Generate meals using AI
+        List<Meal> meals = generateMeals(profile, targetCalories, macros);
+
+        // Create and populate diet plan
+        DietPlan dietPlan = createDietPlan(user, meals, targetCalories, macros);
+
+        log.info("Successfully generated diet plan with {} meals for user: {}",
+                meals.size(), user.getUsername());
+
+        return dietPlan;
+
     }
 
 
@@ -88,42 +84,37 @@ public class AIRecommendationService {
      */
     public DietPlan generateDietPlanWithHistory(User user, List<DailyNutritionSummary> historicalData,
                                                 DailyNutritionSummary todaysSummary) {
-        try {
-            UserProfile profile = user.getProfile();
-            if (profile == null) {
-                throw new IllegalArgumentException("User profile is required to generate diet plan");
-            }
-
-            log.info("Generating adaptive diet plan for user: {} with {} days of historical data",
-                    user.getUsername(), historicalData.size());
-
-            // Calculate base nutritional requirements
-            BigDecimal baseTargetCalories = nutritionCalculator.calculateTargetCalories(profile);
-            NutritionCalculatorService.MacroDistribution baseMacros =
-                    nutritionCalculator.calculateMacros(baseTargetCalories, profile.getGoal());
-
-            // Analyze historical patterns
-            NutritionAnalysis analysis = analyzeHistoricalData(historicalData, todaysSummary,
-                    baseTargetCalories, baseMacros);
-
-            // Adjust targets based on analysis
-            CalorieAdjustment adjustment = calculateCalorieAdjustment(analysis, profile);
-
-            // Generate adaptive meals
-            List<Meal> meals = generateAdaptiveMeals(profile, adjustment, baseMacros, analysis);
-
-            // Create diet plan with adjusted targets
-            DietPlan dietPlan = createAdaptiveDietPlan(user, meals, adjustment, analysis);
-
-            log.info("Successfully generated adaptive diet plan for user: {} with {} calorie adjustment",
-                    user.getUsername(), adjustment.getAdjustedTargetCalories().subtract(baseTargetCalories));
-
-            return dietPlan;
-
-        } catch (Exception e) {
-            log.error("Failed to generate adaptive diet plan for user: {}", user.getUsername(), e);
-            throw new RuntimeException("Failed to generate adaptive diet plan: " + e.getMessage(), e);
+        UserProfile profile = user.getProfile();
+        if (profile == null) {
+            throw new BadRequestException("Complete your health profile before generating a diet plan");
         }
+
+        log.info("Generating adaptive diet plan for user: {} with {} days of historical data",
+                user.getUsername(), historicalData.size());
+
+        // Calculate base nutritional requirements
+        BigDecimal baseTargetCalories = nutritionCalculator.calculateTargetCalories(profile);
+        NutritionCalculatorService.MacroDistribution baseMacros =
+                nutritionCalculator.calculateMacros(baseTargetCalories, profile.getGoal());
+
+        // Analyze historical patterns
+        NutritionAnalysis analysis = analyzeHistoricalData(historicalData, todaysSummary,
+                baseTargetCalories, baseMacros);
+
+        // Adjust targets based on analysis
+        CalorieAdjustment adjustment = calculateCalorieAdjustment(analysis, profile);
+
+        // Generate adaptive meals
+        List<Meal> meals = generateAdaptiveMeals(profile, adjustment, baseMacros, analysis);
+
+        // Create diet plan with adjusted targets
+        DietPlan dietPlan = createAdaptiveDietPlan(user, meals, adjustment, analysis);
+
+        log.info("Successfully generated adaptive diet plan for user: {} with {} calorie adjustment",
+                user.getUsername(), adjustment.getAdjustedTargetCalories().subtract(baseTargetCalories));
+
+        return dietPlan;
+
     }
 
     /**
@@ -270,7 +261,7 @@ public class AIRecommendationService {
 
         } catch (Exception e) {
             log.error("Failed to generate adaptive meals using AI", e);
-            throw new RuntimeException("Adaptive meal generation failed", e);
+            throw new ExternalServiceException("The AI service could not generate a meal plan. Please try again.", e);
         }
     }
 
@@ -429,7 +420,7 @@ public class AIRecommendationService {
 
         } catch (Exception e) {
             log.error("Failed to generate meals using AI", e);
-            throw new RuntimeException("AI meal generation failed", e);
+            throw new ExternalServiceException("The AI service could not generate a meal plan. Please try again.", e);
         }
     }
 
@@ -700,7 +691,7 @@ public class AIRecommendationService {
 
         } catch (Exception e) {
             log.error("Failed to generate single meal", e);
-            throw new RuntimeException("Single meal generation failed", e);
+            throw new ExternalServiceException("The AI service could not generate a meal. Please try again.", e);
         }
     }
 

@@ -1,5 +1,6 @@
 package com.bytehealers.healverse.service;
 
+import com.bytehealers.healverse.exception.*;
 import com.bytehealers.healverse.dto.response.*;
 import com.bytehealers.healverse.dto.request.FoodLogRequest;
 import com.bytehealers.healverse.model.FoodItem;
@@ -96,30 +97,23 @@ public class FoodLoggingService {
     """;
 
     public FoodLogResponse logFoodByDescription(Long userId, FoodLogRequest request) {
+        AIFoodResponse aiFoodResponse;
         try {
-            String prompt = String.format(FOOD_ANALYSIS_PROMPT, request.getDescription());
-
             String aiResponse = chatClient.prompt()
-                    .user(prompt)
+                    .user(String.format(FOOD_ANALYSIS_PROMPT, request.getDescription()))
                     .call()
                     .content();
-
-            AIFoodResponse aiFoodResponse = objectMapper.readValue(aiResponse, AIFoodResponse.class);
-
-            FoodLogResponse res = createFoodLog(userId, request, aiFoodResponse, false, null, null);
-
-            FoodLog savedFoodLog = foodLogRepository.findById(res.getId()).get();
-
-            // TODO: Temporarily disabled to fix StackOverflowError - investigate gamification recursion
-            // gamificationService.recordFoodLog(userId, savedFoodLog);
-
-            return res;
+            aiFoodResponse = objectMapper.readValue(aiResponse, AIFoodResponse.class);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to analyze food description: " + e.getMessage());
+            throw new ExternalServiceException("The AI service could not analyze the food description. Please try again.", e);
         }
+
+        // TODO: gamification points are disabled here (StackOverflowError - investigate gamification recursion)
+        return createFoodLog(userId, request, aiFoodResponse, false, null, null);
     }
 
     public FoodLogResponse logFoodByImage(Long userId, MultipartFile image, FoodLogRequest request) {
+        AIFoodResponse aiFoodResponse;
         try {
             String aiResponse = chatClient.prompt()
                     .user(userSpec -> userSpec
@@ -128,40 +122,20 @@ public class FoodLoggingService {
                     .call()
                     .content();
 
-//            log.debug("Raw AI Response: {}", aiResponse);
-
-            System.out.println("New ai response" + aiResponse);
-
-            // Clean the response - remove markdown code blocks if present
             String cleanedResponse = cleanJsonResponse(aiResponse)
-                .orElseThrow(() -> new RuntimeException("AI response was empty or invalid"));
-
-            System.out.println("Cleaned ai response" + cleanedResponse);
-
-            AIFoodResponse aiFoodResponse = objectMapper.readValue(cleanedResponse, AIFoodResponse.class);
-
-            String imageUrl = "https://example.com/fake-image.jpg"; // Your actual image upload logic
-
-            FoodLogResponse res = createFoodLog(userId, request, aiFoodResponse, true, imageUrl, aiFoodResponse.getDescription());
-            nutritionSyncService.syncAfterFoodLogAsync(userId, res.getLoggedAt());
-
-            Long foodLogId = res.getId();
-            if (foodLogId == null) {
-                throw new RuntimeException("Food log ID is null");
-            }
-            
-            FoodLog savedLog = foodLogRepository.findById(foodLogId)
-                    .orElseThrow(ClassNotFoundException::new);
-
-            // TODO: Temporarily disabled to fix StackOverflowError - investigate gamification recursion
-            // gamificationService.recordFoodLog(userId, savedLog);
-
-
-            return res;
+                    .orElseThrow(() -> new IllegalStateException("AI response was empty or invalid"));
+            aiFoodResponse = objectMapper.readValue(cleanedResponse, AIFoodResponse.class);
         } catch (Exception e) {
-//            log.error("Failed to process food image", e);
-            throw new RuntimeException("Failed to create food log from image: " + e.getMessage(), e);
+            throw new ExternalServiceException("The AI service could not analyze the food image. Please try again.", e);
         }
+
+        String imageUrl = "https://example.com/fake-image.jpg"; // Your actual image upload logic
+
+        FoodLogResponse res = createFoodLog(userId, request, aiFoodResponse, true, imageUrl, aiFoodResponse.getDescription());
+        nutritionSyncService.syncAfterFoodLogAsync(userId, res.getLoggedAt());
+
+        // TODO: gamification points are disabled here (StackOverflowError - investigate gamification recursion)
+        return res;
     }
 
     private Optional<String> cleanJsonResponse(String response) {
@@ -186,7 +160,7 @@ public class FoodLoggingService {
                                           boolean isFromCamera, String imageUrl, String imageDescription) {
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         FoodLog foodLog = new FoodLog();
         foodLog.setUser(user);
@@ -248,10 +222,10 @@ public class FoodLoggingService {
 
     public FoodLogResponse getFoodLogById(Long userId, Long foodLogId) {
         FoodLog foodLog = foodLogRepository.findById(foodLogId)
-                .orElseThrow(() -> new RuntimeException("Food log not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Food log not found"));
 
         if (!foodLog.getUser().getId().equals(userId)) {
-            throw new RuntimeException("Unauthorized access to food log");
+            throw new ResourceNotFoundException("Food log not found");
         }
 
         return convertToResponse(foodLog);
@@ -259,10 +233,10 @@ public class FoodLoggingService {
 
     public FoodLogResponse updateFoodLog(Long userId, Long foodLogId, FoodLogRequest request) {
         FoodLog foodLog = foodLogRepository.findById(foodLogId)
-                .orElseThrow(() -> new RuntimeException("Food log not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Food log not found"));
 
         if (!foodLog.getUser().getId().equals(userId)) {
-            throw new RuntimeException("Unauthorized access to food log");
+            throw new ResourceNotFoundException("Food log not found");
         }
 
         foodLog.setMealType(request.getMealType());
@@ -277,10 +251,10 @@ public class FoodLoggingService {
 
     public boolean deleteFoodLog(Long userId, Long foodLogId) {
         FoodLog foodLog = foodLogRepository.findById(foodLogId)
-                .orElseThrow(() -> new RuntimeException("Food log not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Food log not found"));
 
         if (!foodLog.getUser().getId().equals(userId)) {
-            throw new RuntimeException("Unauthorized access to food log");
+            throw new ResourceNotFoundException("Food log not found");
         }
 
         foodLogRepository.delete(foodLog);

@@ -1,5 +1,6 @@
 package com.bytehealers.healverse.service;
 
+import com.bytehealers.healverse.exception.*;
 import com.bytehealers.healverse.dto.response.TextResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,7 +79,7 @@ public class VoiceAssistantService {
 
         } catch (Exception e) {
             logger.error("Error processing AI request for session {}: {}", sessionId, e.getMessage(), e);
-            throw new RuntimeException("Unable to process AI request", e);
+            throw new ExternalServiceException("The AI assistant is unavailable right now. Please try again.", e);
         }
     }
 
@@ -98,7 +99,7 @@ public class VoiceAssistantService {
 
         } catch (Exception e) {
             logger.error("TTS error: {}", e.getMessage(), e);
-            throw new RuntimeException("Text-to-speech conversion failed", e);
+            throw new ExternalServiceException("Text-to-speech is unavailable right now. Please try again.", e);
         }
     }
 

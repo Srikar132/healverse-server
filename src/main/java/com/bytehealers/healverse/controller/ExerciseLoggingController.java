@@ -35,93 +35,64 @@ public class ExerciseLoggingController {
 
     @PostMapping("/log")
     public ResponseEntity<ApiResponse<ExerciseLog>> logExercise(@Valid @RequestBody LogExerciseRequest request) {
-        try {
-            Long userId = userContext.getCurrentUserId();
-            ExerciseLog exerciseLog = exerciseLoggingService.logExercise(request, userId);
-            return ResponseEntity.ok(ApiResponse.success("Exercise logged successfully", exerciseLog));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to log exercise: " + e.getMessage()));
-        }
+        Long userId = userContext.getCurrentUserId();
+        ExerciseLog exerciseLog = exerciseLoggingService.logExercise(request, userId);
+        return ResponseEntity.ok(ApiResponse.success("Exercise logged successfully", exerciseLog));
     }
 
     @GetMapping("/today")
     public ResponseEntity<ApiResponse<List<ExerciseLog>>> getTodaysExerciseLogs() {
-        try {
-            Long userId = userContext.getCurrentUserId();
-            List<ExerciseLog> exerciseLogs = exerciseLoggingService.getTodaysExerciseLogs(userId);
-            return ResponseEntity.ok(ApiResponse.success("Today's exercise logs retrieved successfully", exerciseLogs));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to retrieve today's exercise logs: " + e.getMessage()));
-        }
+        Long userId = userContext.getCurrentUserId();
+        List<ExerciseLog> exerciseLogs = exerciseLoggingService.getTodaysExerciseLogs(userId);
+        return ResponseEntity.ok(ApiResponse.success("Today's exercise logs retrieved successfully", exerciseLogs));
     }
 
     @GetMapping("/{date}")
     public ResponseEntity<ApiResponse<List<ExerciseLog>>> getExerciseByDate(
             @PathVariable @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate date
     ) {
-        try {
-            Long userId = userContext.getCurrentUserId();
+        Long userId = userContext.getCurrentUserId();
 
-            List<ExerciseLog> exerciseLogs = exerciseLoggingService.getExerciseLogsByDate(userId , date);
+        List<ExerciseLog> exerciseLogs = exerciseLoggingService.getExerciseLogsByDate(userId , date);
 
-            return ResponseEntity.ok(ApiResponse.success(
-                    "Exercise retrieved successfully",
-                    exerciseLogs
-            ));
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError()
-                    .body(ApiResponse.error("Failed to retrieve dashboard: " + e.getMessage()));
-        }
+        return ResponseEntity.ok(ApiResponse.success(
+                "Exercise retrieved successfully",
+                exerciseLogs
+        ));
     }
 
     @GetMapping("/range")
     public ResponseEntity<ApiResponse<List<ExerciseLog>>> getExerciseLogsByDateRange(
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate) {
-        try {
-            Long userId = userContext.getCurrentUserId();
-            List<ExerciseLog> exerciseLogs = exerciseLoggingService.getExerciseLogsByDateRange(userId, startDate, endDate);
-            return ResponseEntity.ok(ApiResponse.success("Exercise logs retrieved successfully", exerciseLogs));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to retrieve exercise logs: " + e.getMessage()));
-        }
+        Long userId = userContext.getCurrentUserId();
+        List<ExerciseLog> exerciseLogs = exerciseLoggingService.getExerciseLogsByDateRange(userId, startDate, endDate);
+        return ResponseEntity.ok(ApiResponse.success("Exercise logs retrieved successfully", exerciseLogs));
     }
 
     @PutMapping("/{exerciseLogId}")
     public ResponseEntity<ApiResponse<ExerciseLog>> updateExerciseLog(
             @PathVariable Long exerciseLogId,
             @Valid @RequestBody LogExerciseRequest request) {
-        try {
-            Long userId = userContext.getCurrentUserId();
-            ExerciseLog updatedLog = exerciseLoggingService.updateExerciseLog(exerciseLogId, request, userId);
-            return ResponseEntity.ok(ApiResponse.success("Exercise log updated successfully", updatedLog));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to update exercise log: " + e.getMessage()));
-        }
+        Long userId = userContext.getCurrentUserId();
+        ExerciseLog updatedLog = exerciseLoggingService.updateExerciseLog(exerciseLogId, request, userId);
+        return ResponseEntity.ok(ApiResponse.success("Exercise log updated successfully", updatedLog));
     }
 
     @DeleteMapping("/{exerciseLogId}")
     public ResponseEntity<ApiResponse<String>> deleteExerciseLog(@PathVariable Long exerciseLogId) {
-        try {
-            Long userId = userContext.getCurrentUserId();
-            boolean deleted = exerciseLoggingService.deleteExerciseLog(exerciseLogId, userId);
-            if (deleted) {
-                return ResponseEntity.ok(ApiResponse.success("Exercise log deleted successfully", "Deleted"));
-            } else {
-                return ResponseEntity.status(404).body(ApiResponse.error("Exercise log not found"));
-            }
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to delete exercise log: " + e.getMessage()));
+        Long userId = userContext.getCurrentUserId();
+        boolean deleted = exerciseLoggingService.deleteExerciseLog(exerciseLogId, userId);
+        if (deleted) {
+            return ResponseEntity.ok(ApiResponse.success("Exercise log deleted successfully", "Deleted"));
+        } else {
+            return ResponseEntity.status(404).body(ApiResponse.error("Exercise log not found"));
         }
     }
 
     @GetMapping("/types")
     public ResponseEntity<ApiResponse<Map<String, Map<ExerciseIntensity, BigDecimal>>>> getExerciseTypes() {
-        try {
-            Map<String, Map<ExerciseIntensity, BigDecimal>> exerciseTypes = calorieCalculatorService.getAllExerciseTypes();
-            return ResponseEntity.ok(ApiResponse.success("Exercise types retrieved successfully", exerciseTypes));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Failed to retrieve exercise types: " + e.getMessage()));
-        }
+        Map<String, Map<ExerciseIntensity, BigDecimal>> exerciseTypes = calorieCalculatorService.getAllExerciseTypes();
+        return ResponseEntity.ok(ApiResponse.success("Exercise types retrieved successfully", exerciseTypes));
     }
 }

@@ -1,5 +1,6 @@
 package com.bytehealers.healverse.service;
 
+import com.bytehealers.healverse.exception.*;
 import com.bytehealers.healverse.dto.request.LogExerciseRequest;
 import com.bytehealers.healverse.model.ExerciseLog;
 import com.bytehealers.healverse.model.User;
@@ -38,7 +39,7 @@ public class ExerciseLoggingService {
 
     public ExerciseLog logExercise(LogExerciseRequest request, Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         BigDecimal caloriesBurned = calorieCalculatorService.calculateExerciseCalories(
                 request.getExerciseName(),
@@ -78,14 +79,14 @@ public class ExerciseLoggingService {
 
     public List<ExerciseLog> getTodaysExerciseLogs(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         return exerciseLogRepository.findTodaysExerciseLogs(user.getId());
     }
 
     public List<ExerciseLog> getExerciseLogsByDate(Long userId, LocalDate date) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         return exerciseLogRepository.findExerciseLogsByDate(user.getId(), date);
     }
@@ -93,7 +94,7 @@ public class ExerciseLoggingService {
 
     public List<ExerciseLog> getExerciseLogsByDateRange(Long userId, LocalDate startDate, LocalDate endDate) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
@@ -103,14 +104,14 @@ public class ExerciseLoggingService {
 
     public ExerciseLog updateExerciseLog(Long exerciseLogId, LogExerciseRequest request, Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         ExerciseLog exerciseLog = exerciseLogRepository.findById(exerciseLogId)
-                .orElseThrow(() -> new RuntimeException("Exercise log not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Exercise log not found"));
 
         // Check if this log belongs to the user
         if (!exerciseLog.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Unauthorized access");
+            throw new ResourceNotFoundException("Exercise log not found");
         }
 
         BigDecimal caloriesBurned = calorieCalculatorService.calculateExerciseCalories(
@@ -134,7 +135,7 @@ public class ExerciseLoggingService {
 
     public boolean deleteExerciseLog(Long exerciseLogId, Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         ExerciseLog exerciseLog = exerciseLogRepository.findById(exerciseLogId)
                 .orElse(null);
@@ -144,7 +145,7 @@ public class ExerciseLoggingService {
         }
 
         if (!exerciseLog.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Unauthorized access");
+            throw new ResourceNotFoundException("Exercise log not found");
         }
 
         LocalDateTime loggedAt = exerciseLog.getLoggedAt();
