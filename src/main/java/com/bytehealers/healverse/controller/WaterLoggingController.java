@@ -5,6 +5,7 @@ import com.bytehealers.healverse.dto.request.QuickWaterLogRequest;
 import com.bytehealers.healverse.dto.response.ApiResponse;
 import com.bytehealers.healverse.exception.ResourceNotFoundException;
 import com.bytehealers.healverse.model.WaterLog;
+import com.bytehealers.healverse.service.IdempotencyService;
 import com.bytehealers.healverse.service.WaterLoggingService;
 import com.bytehealers.healverse.security.CurrentUserId;
 import jakarta.validation.Valid;
@@ -23,17 +24,26 @@ import java.util.List;
 public class WaterLoggingController {
 
     private final WaterLoggingService waterLoggingService;
+    private final IdempotencyService idempotencyService;
 
 
     @PostMapping("/log")
-    public ResponseEntity<ApiResponse<WaterLog>> logWater(@Valid @RequestBody LogWaterRequest request, @CurrentUserId Long userId) {
-        WaterLog waterLog = waterLoggingService.logWater(request, userId);
+    public ResponseEntity<ApiResponse<WaterLog>> logWater(
+            @Valid @RequestBody LogWaterRequest request,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @CurrentUserId Long userId) {
+        WaterLog waterLog = idempotencyService.execute(userId, idempotencyKey, WaterLog.class,
+                () -> waterLoggingService.logWater(request, userId));
         return ResponseEntity.ok(ApiResponse.success("Water intake logged successfully", waterLog));
     }
 
     @PostMapping("/quick")
-    public ResponseEntity<ApiResponse<WaterLog>> logQuickWater(@Valid @RequestBody QuickWaterLogRequest request, @CurrentUserId Long userId) {
-        WaterLog waterLog = waterLoggingService.logQuickWater(request, userId);
+    public ResponseEntity<ApiResponse<WaterLog>> logQuickWater(
+            @Valid @RequestBody QuickWaterLogRequest request,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @CurrentUserId Long userId) {
+        WaterLog waterLog = idempotencyService.execute(userId, idempotencyKey, WaterLog.class,
+                () -> waterLoggingService.logQuickWater(request, userId));
         return ResponseEntity.ok(ApiResponse.success("Quick water intake logged successfully", waterLog));
     }
 
