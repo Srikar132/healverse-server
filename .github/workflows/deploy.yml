@@ -7,6 +7,12 @@ name: Deploy to EC2
 on:
   push:
     branches: [main]
+    # Changes that cannot affect the running app do not redeploy it (workflow_dispatch below still can)
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - ".github/dependabot.yml"
+      - ".gitignore"
   workflow_dispatch:
 
 # Never run two deployments at once, and never cancel one halfway
