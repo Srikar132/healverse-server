@@ -1,0 +1,17 @@
+# Production compose file. The deploy workflow copies it to /opt/healverse/docker-compose.yml on the server and
+# runs it through deploy/deploy.sh, which sets IMAGE and TAG. Secrets come from /opt/healverse/.env on the server.
+services:
+  api:
+    image: ${IMAGE:?IMAGE is not set}:${TAG:?TAG is not set}
+    env_file: .env
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+    ports:
+      - "80:8080"
+    restart: unless-stopped
+    stop_grace_period: 40s   # let in-flight AI requests finish (server.shutdown=graceful, 30s)
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
