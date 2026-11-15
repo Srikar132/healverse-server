@@ -7,6 +7,7 @@ import com.bytehealers.healverse.dto.response.DashboardResponse;
 import com.bytehealers.healverse.model.ExerciseLog;
 import com.bytehealers.healverse.service.CalorieCalculatorService;
 import com.bytehealers.healverse.service.ExerciseLoggingService;
+import com.bytehealers.healverse.service.IdempotencyService;
 import com.bytehealers.healverse.security.CurrentUserId;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -27,11 +28,16 @@ public class ExerciseLoggingController {
 
     private final ExerciseLoggingService exerciseLoggingService;
     private final CalorieCalculatorService calorieCalculatorService;
+    private final IdempotencyService idempotencyService;
 
 
     @PostMapping("/log")
-    public ResponseEntity<ApiResponse<ExerciseLog>> logExercise(@Valid @RequestBody LogExerciseRequest request, @CurrentUserId Long userId) {
-        ExerciseLog exerciseLog = exerciseLoggingService.logExercise(request, userId);
+    public ResponseEntity<ApiResponse<ExerciseLog>> logExercise(
+            @Valid @RequestBody LogExerciseRequest request,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @CurrentUserId Long userId) {
+        ExerciseLog exerciseLog = idempotencyService.execute(userId, idempotencyKey, ExerciseLog.class,
+                () -> exerciseLoggingService.logExercise(request, userId));
         return ResponseEntity.ok(ApiResponse.success("Exercise logged successfully", exerciseLog));
     }
 

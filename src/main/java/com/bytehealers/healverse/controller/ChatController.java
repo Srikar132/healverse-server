@@ -5,6 +5,7 @@ import com.bytehealers.healverse.dto.response.MessageResponse;
 import com.bytehealers.healverse.dto.request.SendMessageRequest;
 import com.bytehealers.healverse.model.Conversation;
 import com.bytehealers.healverse.service.ChatService;
+import com.bytehealers.healverse.service.IdempotencyService;
 import com.bytehealers.healverse.security.CurrentUserId;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +24,7 @@ import java.util.List;
 public class ChatController {
 
     private final ChatService chatService;
+    private final IdempotencyService idempotencyService;
 
 
     /**
@@ -32,8 +34,10 @@ public class ChatController {
     public ResponseEntity<ApiResponse<MessageResponse>> sendMessage(
             @PathVariable String conversationId,
             @Valid @RequestBody SendMessageRequest request,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             Authentication authentication, @CurrentUserId Long userId) {
-        MessageResponse response = chatService.sendMessage(conversationId, userId, request);
+        MessageResponse response = idempotencyService.execute(userId, idempotencyKey, MessageResponse.class,
+                () -> chatService.sendMessage(conversationId, userId, request));
         return ResponseEntity.ok(ApiResponse.success("Message sent successfully", response));
     }
 
