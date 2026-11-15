@@ -1,7 +1,7 @@
 
 package com.bytehealers.healverse.dto.request;
 
-import com.bytehealers.healverse.model.WaterPreset;
+import com.bytehealers.healverse.model.enums.WaterPreset;
 import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDateTime;

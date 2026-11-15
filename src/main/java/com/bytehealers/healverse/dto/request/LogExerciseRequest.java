@@ -1,7 +1,7 @@
 package com.bytehealers.healverse.dto.request;
 
 
-import com.bytehealers.healverse.model.ExerciseIntensity;
+import com.bytehealers.healverse.model.enums.ExerciseIntensity;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;

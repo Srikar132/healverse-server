@@ -1,5 +1,6 @@
 package com.bytehealers.healverse.service;
 
+import com.bytehealers.healverse.exception.*;
 import com.bytehealers.healverse.dto.request.LogWaterRequest;
 import com.bytehealers.healverse.dto.request.QuickWaterLogRequest;
 import com.bytehealers.healverse.model.User;
@@ -7,7 +8,7 @@ import com.bytehealers.healverse.model.WaterLog;
 import com.bytehealers.healverse.repo.UserRepository;
 import com.bytehealers.healverse.repo.WaterLogRepository;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -19,16 +20,14 @@ import java.util.Optional;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class WaterLoggingService {
 
-    @Autowired
-    private WaterLogRepository waterLogRepository;
+    private final WaterLogRepository waterLogRepository;
 
-    @Autowired
-    private NutritionSyncService nutritionSyncService;
+    private final NutritionSyncService nutritionSyncService;
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
 
     public WaterLog logWater(LogWaterRequest request, Long userId) {
         User user = getUserOrThrow(userId); // 🔥 Fetch the user
@@ -98,17 +97,14 @@ public class WaterLoggingService {
     }
 
     public boolean deleteWaterLog(Long waterLogId, Long userId) {
-        Optional<WaterLog> existingLog = waterLogRepository.findById(waterLogId);
+        // Owner-scoped lookup: another user's log is indistinguishable from a missing one
+        Optional<WaterLog> existingLog = waterLogRepository.findByIdAndUser_Id(waterLogId, userId);
 
         if (existingLog.isEmpty()) {
             return false;
         }
 
         WaterLog waterLog = existingLog.get();
-
-        if (!waterLog.getUser().getId().equals(userId)) {
-            throw new RuntimeException("Unauthorized access");
-        }
 
         LocalDateTime loggedAt = waterLog.getLoggedAt();
         waterLogRepository.delete(waterLog);
@@ -121,6 +117,6 @@ public class WaterLoggingService {
 
     private User getUserOrThrow(Long userId) {
         return userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found for ID: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 }

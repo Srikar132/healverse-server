@@ -1,5 +1,7 @@
 package com.bytehealers.healverse.service;
 
+import com.bytehealers.healverse.model.enums.MessageRole;
+import com.bytehealers.healverse.exception.*;
 import com.bytehealers.healverse.dto.response.MessageResponse;
 import com.bytehealers.healverse.dto.request.SendMessageRequest;
 import com.bytehealers.healverse.model.*;
@@ -92,30 +94,10 @@ public class ChatService {
         return mapToMessageResponse(botMessage);
     }
 
-    /**
-     * Test OpenAI connection with a simple request
-     */
-    public String testOpenAIConnection() {
-        try {
-            log.info("Testing OpenAI connection...");
-            
-            String response = chatClient.prompt()
-                    .user("Say 'Hello, OpenAI connection is working!'")
-                    .call()
-                    .content();
-            
-            log.info("OpenAI test successful: {}", response);
-            return response;
-        } catch (Exception e) {
-            log.error("OpenAI test failed", e);
-            throw new RuntimeException("OpenAI connection failed: " + e.getMessage(), e);
-        }
-    }
-
     public List<MessageResponse> getMessages(String conversationId, Long userId) {
         // Verify conversation belongs to user
         if (!conversationRepository.existsByIdAndUserId(conversationId, userId)) {
-            throw new RuntimeException("Conversation not found or access denied");
+            throw new ResourceNotFoundException("Conversation not found");
         }
 
         List<com.bytehealers.healverse.model.Message> messages =
@@ -130,7 +112,7 @@ public class ChatService {
         return conversationRepository.findByIdAndUserId(conversationId, userId)
                 .orElseGet(() -> {
                     User user = userRepository.findById(userId)
-                            .orElseThrow(() -> new RuntimeException("User not found"));
+                            .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
                     Conversation newConversation = new Conversation();
                     newConversation.setId(conversationId);

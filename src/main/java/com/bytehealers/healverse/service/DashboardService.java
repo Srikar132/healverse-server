@@ -1,6 +1,6 @@
 package com.bytehealers.healverse.service;
 
-import com.bytehealers.healverse.dto.NutritionStats;
+import com.bytehealers.healverse.dto.response.NutritionStats;
 import com.bytehealers.healverse.dto.response.DashboardResponse;
 import com.bytehealers.healverse.dto.response.FoodLogResponse;
 import com.bytehealers.healverse.exception.ResourceNotFoundException;
@@ -8,7 +8,7 @@ import com.bytehealers.healverse.model.*;
 import com.bytehealers.healverse.repo.DailyNutritionSummaryRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.stereotype.Service;
 
@@ -17,28 +17,23 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+@RequiredArgsConstructor
 @Service
 public class DashboardService {
 
     private static final Logger log = LoggerFactory.getLogger(DashboardService.class);
 
-    @Autowired
-    private DailyNutritionSummaryRepository dailyNutritionSummaryRepository;
+    private final DailyNutritionSummaryRepository dailyNutritionSummaryRepository;
 
-    @Autowired
-    private FoodLoggingService foodLoggingService;
+    private final FoodLoggingService foodLoggingService;
 
-    @Autowired
-    private ExerciseLoggingService exerciseLoggingService;
+    private final ExerciseLoggingService exerciseLoggingService;
 
-    @Autowired
-    private WaterLoggingService waterLoggingService;
+    private final WaterLoggingService waterLoggingService;
 
-    @Autowired
-    private NutritionSyncService nutritionSyncService;
+    private final NutritionSyncService nutritionSyncService;
 
-    @Autowired
-    private UserService userService;
+    private final UserService userService;
 
     public DashboardResponse getTodaysDashboard(Long userId) {
         LocalDate today = LocalDate.now();

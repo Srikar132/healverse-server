@@ -2,15 +2,19 @@ package com.bytehealers.healverse.service;
 
 import com.bytehealers.healverse.model.*;
 import com.bytehealers.healverse.repo.DailyNutritionSummaryRepository;
+import com.bytehealers.healverse.repo.ExerciseLogRepository;
+import com.bytehealers.healverse.repo.FoodLogRepository;
+import com.bytehealers.healverse.repo.WaterLogRepository;
 import com.bytehealers.healverse.repo.UserRepository;
 import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -19,31 +23,25 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
+@RequiredArgsConstructor
 @Service
 public class NutritionSyncService {
 
     private static final Logger log =  LoggerFactory.getLogger(NutritionSyncService.class);
 
-    @Autowired
-    private DailyNutritionSummaryRepository dailyNutritionSummaryRepository;
+    private final DailyNutritionSummaryRepository dailyNutritionSummaryRepository;
 
-    @Autowired
-    private ExerciseLoggingService exerciseLoggingService;
+    private final ExerciseLogRepository exerciseLogRepository;
 
-    @Autowired
-    private WaterLoggingService waterLoggingService;
+    private final WaterLogRepository waterLogRepository;
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
 
-    @Autowired
-    private FoodLoggingService foodLoggingService;
+    private final FoodLogRepository foodLogRepository;
 
-    @Autowired
-    private DietPlanService  dietPlanService;
+    private final DietPlanService  dietPlanService;
 
-    @Autowired
-    private NutritionCalculatorService  nutritionCalculatorService;
+    private final NutritionCalculatorService  nutritionCalculatorService;
 
     @Transactional
     public void syncDailySummary(Long userId, LocalDate date) {
@@ -52,8 +50,10 @@ public class NutritionSyncService {
             log.info("🔄 Starting sync for userId: {} on date: {}", userId, date);
 
             DailyNutritionSummary summary = getOrCreateSummary(user, date);
+            LocalDateTime dayStart = date.atStartOfDay();
+            LocalDateTime dayEnd = date.atTime(LocalTime.MAX);
 
-            List<FoodLog> foodLogs = foodLoggingService.getFoodLogsByDateRange(userId, date, date);
+            List<FoodLog> foodLogs = foodLogRepository.findFoodLogsByUserIdAndDateRange(userId, dayStart, dayEnd);
             BigDecimal totalCalories = BigDecimal.ZERO;
             BigDecimal totalProtein = BigDecimal.ZERO;
             BigDecimal totalCarbs = BigDecimal.ZERO;
@@ -70,7 +70,7 @@ public class NutritionSyncService {
                 }
             }
 
-            List<ExerciseLog> exerciseLogs = exerciseLoggingService.getExerciseLogsByDateRange(userId, date, date);
+            List<ExerciseLog> exerciseLogs = exerciseLogRepository.findByUserIdAndLoggedAtBetween(userId, dayStart, dayEnd);
             BigDecimal totalCaloriesBurned = exerciseLogs.stream()
                     .map(ExerciseLog::getCaloriesBurned)
                     .filter(Objects::nonNull)
@@ -79,7 +79,7 @@ public class NutritionSyncService {
             log.debug("Found {} exercise logs for userId {} on {}, total burned: {}",
                     exerciseLogs.size(), userId, date, totalCaloriesBurned);
 
-            List<WaterLog> waterLogs = waterLoggingService.getWaterLogsByDateRange(userId, date, date);
+            List<WaterLog> waterLogs = waterLogRepository.findByUserIdAndLoggedAtBetween(userId, dayStart, dayEnd);
             BigDecimal totalWater = waterLogs.stream()
                     .map(WaterLog::getAmountMl)
                     .filter(Objects::nonNull)
