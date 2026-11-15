@@ -1,12 +1,25 @@
 version: 2
 updates:
-  # Keeps the SHA-pinned GitHub Actions in .github/workflows up to date
+  # Keeps the SHA-pinned GitHub Actions in .github/workflows current: one PR a month for all of them.
+  # CI runs on it, so check the deploy workflow is still green before merging.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  # Maven: one PR a month for minor and patch updates. Major versions are ignored on purpose (they can break the
+  # build, e.g. springdoc 3.x); upgrade those deliberately.
   - package-ecosystem: "maven"
     directory: "/"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    groups:
+      maven-minor-and-patch:
+        update-types: ["minor", "patch"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
