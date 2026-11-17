@@ -50,6 +50,8 @@ public class NutritionSyncService {
             log.info("🔄 Starting sync for userId: {} on date: {}", userId, date);
 
             DailyNutritionSummary summary = getOrCreateSummary(user, date);
+            // The plan may have been generated after the summary row was first created.
+            applyPlanTargets(summary, userId, date);
             LocalDateTime dayStart = date.atStartOfDay();
             LocalDateTime dayEnd = date.atTime(LocalTime.MAX);
 
@@ -175,22 +177,10 @@ public class NutritionSyncService {
         newSummary.setCreatedAt(LocalDateTime.now());
         newSummary.setUpdatedAt(LocalDateTime.now());
 
-        try {
-            // --- Step 1: Try getting diet plan for the date ---
-            DietPlan dietPlan = dietPlanService.getDailyPlan(user.getId(), date); // Will auto-generate if not exists
-
-            if (dietPlan != null) {
-                log.debug("Using diet plan for nutrition targets");
-                newSummary.setTargetCalories(dietPlan.getTotalCalories());
-                newSummary.setTargetProtein(dietPlan.getTotalProtein());
-                newSummary.setTargetCarbs(dietPlan.getTotalCarbs());
-                newSummary.setTargetFat(dietPlan.getTotalFat());
-            } else {
-                log.debug("No diet plan found — calculating targets from profile");
-                setTargetsFromProfile(user, newSummary);
-            }
-        } catch (Exception e) {
-            log.warn("Failed to fetch diet plan, falling back to nutrition calculator: {}", e.getMessage());
+        // Targets come from the day's plan when one exists, otherwise from the profile. Reading a
+        // summary must never generate a plan: that is a slow AI call (and a write) hidden inside
+        // a GET. Plans are generated explicitly through the diet-plan endpoints.
+        if (!applyPlanTargets(newSummary, user.getId(), date)) {
             setTargetsFromProfile(user, newSummary);
         }
 
@@ -198,6 +188,18 @@ public class NutritionSyncService {
         newSummary.calculateRemainingCalories();
 
         return dailyNutritionSummaryRepository.save(newSummary);
+    }
+
+    /** Copies the stored plan's totals into the summary. Returns false when the day has no plan. */
+    private boolean applyPlanTargets(DailyNutritionSummary summary, Long userId, LocalDate date) {
+        Optional<DietPlan> plan = dietPlanService.findExistingPlan(userId, date);
+        plan.ifPresent(dietPlan -> {
+            summary.setTargetCalories(dietPlan.getTotalCalories());
+            summary.setTargetProtein(dietPlan.getTotalProtein());
+            summary.setTargetCarbs(dietPlan.getTotalCarbs());
+            summary.setTargetFat(dietPlan.getTotalFat());
+        });
+        return plan.isPresent();
     }
 
     private void setTargetsFromProfile(User user, DailyNutritionSummary summary) {

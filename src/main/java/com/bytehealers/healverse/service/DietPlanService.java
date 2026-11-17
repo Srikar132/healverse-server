@@ -127,6 +127,15 @@ public class DietPlanService {
 
     }
 
+    /**
+     * The plan stored for a day, or empty. Unlike {@link #getDailyPlan} it never generates one, so
+     * it is cheap and safe to call from read paths (the daily summary).
+     */
+    @Transactional(readOnly = true)
+    public Optional<DietPlan> findExistingPlan(Long userId, LocalDate date) {
+        return dietPlanRepository.findByUserIdAndPlanDate(userId, date);
+    }
+
     // REQUIRES_NEW: this is called from NutritionSyncService while a log-food/
     // water/exercise transaction is already active. If AI generation fails here
     // (e.g. invalid OpenAI key), only THIS isolated transaction rolls back —
