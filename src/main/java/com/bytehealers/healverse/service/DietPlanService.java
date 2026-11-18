@@ -129,64 +129,30 @@ public class DietPlanService {
 
     private record PlanKey(Long userId, LocalDate date) {}
 
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    /** The stored plans of the week containing {@code date}, ordered by day. Never generates. */
+    @Transactional(readOnly = true)
     public List<DietPlan> getWeeklyPlans(Long userId, LocalDate date) {
         LocalDate startOfWeek = date.with(DayOfWeek.MONDAY);
         LocalDate endOfWeek = startOfWeek.plusDays(6);
 
         log.info("Getting weekly diet plans for user: {} from {} to {}", userId, startOfWeek, endOfWeek);
-
-        List<DietPlan> existingPlans = dietPlanRepository.findWeeklyPlansByUserIdAndDateRange(userId, startOfWeek, endOfWeek);
-
-        // Generate missing plans for the week
-        for (LocalDate currentDate = startOfWeek; !currentDate.isAfter(endOfWeek); currentDate = currentDate.plusDays(1)) {
-            final LocalDate dateToCheck = currentDate;
-            boolean planExists = existingPlans.stream()
-                    .anyMatch(plan -> plan.getPlanDate().equals(dateToCheck));
-
-            if (!planExists) {
-                try {
-                    DietPlan newPlan = generateDailyPlan(userId, currentDate);
-                    existingPlans.add(newPlan);
-                } catch (Exception e) {
-                    log.warn("Failed to generate diet plan for date: {} for user: {}", currentDate, userId, e);
-                    // Continue with other dates even if one fails
-
-                }
-            }
-        }
-
-        List<DietPlan> sortedPlans = existingPlans.stream()
-                .sorted((p1, p2) -> p1.getPlanDate().compareTo(p2.getPlanDate()))
-                .toList();
-
-        log.info("Retrieved {} diet plans for weekly view for user: {}", sortedPlans.size(), userId);
-        return sortedPlans;
-
+        return dietPlanRepository.findWeeklyPlansByUserIdAndDateRange(userId, startOfWeek, endOfWeek);
     }
 
     /**
-     * The plan stored for a day, or empty. Unlike {@link #getDailyPlan} it never generates one, so
-     * it is cheap and safe to call from read paths (the daily summary).
+     * The plan stored for a day, or empty. It never generates one, so it is cheap and safe to call
+     * from read paths (the daily summary, food logging).
      */
     @Transactional(readOnly = true)
     public Optional<DietPlan> findExistingPlan(Long userId, LocalDate date) {
         return dietPlanRepository.findByUserIdAndPlanDate(userId, date);
     }
 
-    // NOT_SUPPORTED: generation can take a minute and must not run inside a transaction. Callers such
-    // as logging and gamification may already have one; suspending it keeps an AI failure from
-    // marking their transaction rollback-only (UnexpectedRollbackException at commit).
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    /** The stored plan for a day; throws {@link ResourceNotFoundException} when there is none. */
+    @Transactional(readOnly = true)
     public DietPlan getDailyPlan(Long userId, LocalDate date) {
-        log.info("Getting daily diet plan for user: {} on date: {}", userId, date);
-
-        return dietPlanRepository.findByUserIdAndPlanDate(userId, date)
-                .orElseGet(() -> {
-                    log.info("No existing plan found, generating new plan for user: {} on date: {}", userId, date);
-                    return generateDailyPlan(userId, date);
-                });
-
+        return findExistingPlan(userId, date)
+                .orElseThrow(() -> new ResourceNotFoundException("No diet plan for " + date));
     }
 
     /**
@@ -351,10 +317,5 @@ public class DietPlanService {
         log.info("Getting diet plans for user: {} from {} to {}", userId, startDate, endDate);
         return dietPlanRepository.findWeeklyPlansByUserIdAndDateRange(userId, startDate, endDate);
     }
-
-    public DietPlan getTodaysDietPlan(Long userId) {
-        return getDailyPlan(userId, LocalDate.now());
-    }
-    
 
 }
