@@ -14,7 +14,8 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * The stored response of a write request that carried an {@code Idempotency-Key} header.
+ * A write request that carried an {@code Idempotency-Key} header: claimed when it starts, with
+ * its response stored once it has succeeded.
  */
 @Entity
 @Table(name = "idempotency_keys",
@@ -35,7 +36,8 @@ public class IdempotencyKey {
     @Column(name = "idempotency_key", nullable = false, length = 64)
     private String key;
 
-    @Column(name = "response_json", nullable = false, columnDefinition = "TEXT")
+    // Null while the request that claimed the key is still running.
+    @Column(name = "response_json", columnDefinition = "TEXT")
     private String responseJson;
 
     @Column(name = "created_at", nullable = false)
