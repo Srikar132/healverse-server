@@ -26,13 +26,6 @@ public interface ExerciseLogRepository extends JpaRepository<ExerciseLog, Long> 
                                                      @Param("startOfDay") LocalDateTime startOfDay,
                                                      @Param("endOfDay") LocalDateTime endOfDay);
 
-    // ✅ Java-based method that uses the HQL version above
-    default List<ExerciseLog> findTodaysExerciseLogs(Long userId) {
-        LocalDateTime startOfDay = LocalDateTime.now().toLocalDate().atStartOfDay();
-        LocalDateTime endOfDay = LocalDateTime.now().toLocalDate().atTime(23, 59, 59);
-        return findByUserIdAndLoggedAtBetween(userId, startOfDay, endOfDay);
-    }
-
     @Query("SELECT e FROM ExerciseLog e WHERE e.user.id = :userId AND DATE(e.loggedAt) = :date")
     List<ExerciseLog> findExerciseLogsByDate(@Param("userId") Long userId, @Param("date") LocalDate date);
 

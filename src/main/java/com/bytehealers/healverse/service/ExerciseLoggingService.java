@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -26,9 +27,9 @@ public class ExerciseLoggingService {
 
     private final CalorieCalculatorService calorieCalculatorService;
 
-
-
     private final NutritionSyncService nutritionSyncService;
+
+    private final Clock clock;
 
     private final UserRepository userRepository; // 🔥 Added to fetch User by username
 
@@ -49,7 +50,7 @@ public class ExerciseLoggingService {
                 request.getDurationMinutes(),
                 request.getIntensity(),
                 caloriesBurned,
-                request.getLoggedAt() != null ? request.getLoggedAt() : LocalDateTime.now(),
+                request.getLoggedAt() != null ? request.getLoggedAt() : LocalDateTime.now(clock),
                 null
         );
 
@@ -76,7 +77,9 @@ public class ExerciseLoggingService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        return exerciseLogRepository.findTodaysExerciseLogs(user.getId());
+        LocalDateTime startOfDay = LocalDate.now(clock).atStartOfDay();
+        LocalDateTime endOfDay = startOfDay.toLocalDate().atTime(LocalTime.MAX);
+        return exerciseLogRepository.findByUserIdAndLoggedAtBetween(user.getId(), startOfDay, endOfDay);
     }
 
     public List<ExerciseLog> getExerciseLogsByDate(Long userId, LocalDate date) {

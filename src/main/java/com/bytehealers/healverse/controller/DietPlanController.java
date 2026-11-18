@@ -13,6 +13,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +25,9 @@ import java.util.Map;
 public class DietPlanController {
 
     private final DietPlanService dietPlanService;
+
+    private final Clock clock;
+
 
 
     @GetMapping("/weekly/{date}")
@@ -94,7 +98,7 @@ public class DietPlanController {
 
     @GetMapping("/summary")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getDietPlanSummary(@CurrentUserId Long userId) {
-        LocalDate now = LocalDate.now();
+        LocalDate now = LocalDate.now(clock);
         LocalDate startOfMonth = now.withDayOfMonth(1);
         LocalDate endOfMonth = now.withDayOfMonth(now.lengthOfMonth());
         List<DietPlan> monthlyPlans = dietPlanService.getDietPlansByDateRange(userId, startOfMonth, endOfMonth);

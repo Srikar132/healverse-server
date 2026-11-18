@@ -13,6 +13,7 @@ import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -35,14 +36,16 @@ public class DashboardService {
 
     private final UserService userService;
 
+    private final Clock clock;
+
     public DashboardResponse getTodaysDashboard(Long userId) {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
 
        return getDashboard(userId, today);
     }
 
     public List<DailyNutritionSummary> getWeeklySummary(Long userId) {
-        LocalDate endDate = LocalDate.now();
+        LocalDate endDate = LocalDate.now(clock);
         LocalDate startDate = endDate.minusDays(6);
 
         // Sync each day in the range to ensure fresh data
@@ -99,8 +102,8 @@ public class DashboardService {
                 dailyNutritionSummaryRepository.findByUserIdAndDate(userId, date);
 
 
-        if (summary_.isEmpty() && date.isBefore(LocalDate.now())) {
-            log.warn("Cannot generate nutrition summary for past date: {} (today is {})", date, LocalDate.now());
+        if (summary_.isEmpty() && date.isBefore(LocalDate.now(clock))) {
+            log.warn("Cannot generate nutrition summary for past date: {} (today is {})", date, LocalDate.now(clock));
             return null;
         }
 

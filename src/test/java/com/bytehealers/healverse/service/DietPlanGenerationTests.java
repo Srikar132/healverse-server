@@ -12,6 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -55,7 +56,7 @@ class DietPlanGenerationTests {
         aiRecommendationService = mock(AIRecommendationService.class);
         writer = mock(DietPlanWriter.class);
         service = new DietPlanService(dietPlanRepository, userProfileRepository, aiRecommendationService,
-                userRepository, mock(DailyNutritionSummaryRepository.class), writer);
+                userRepository, mock(DailyNutritionSummaryRepository.class), writer, Clock.systemUTC());
 
         user = new User();
         user.setId(USER_ID);

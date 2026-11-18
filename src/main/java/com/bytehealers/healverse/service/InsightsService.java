@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -27,6 +28,7 @@ import java.util.stream.Collectors;
 public class InsightsService {
 
     private final ChatClient chatClient;
+
     private final UserProfileRepository userProfileRepository;
     private final DailyNutritionSummaryRepository dailyNutritionSummaryRepository;
     private final FoodLogRepository foodLogRepository;
@@ -34,11 +36,13 @@ public class InsightsService {
     private final WaterLogRepository waterLogRepository;
     private final UserRepository userRepository;
 
+    private final Clock clock;
+
     @Transactional(readOnly = true)
     public InsightsResponse generateDailyInsights(Long userId) {
         try {
             // Get yesterday's date
-            LocalDate yesterday = LocalDate.now();
+            LocalDate yesterday = LocalDate.now(clock);
 
             // Collect all health data from yesterday
             DailyHealthData healthData = collectDailyHealthData(userId, yesterday);

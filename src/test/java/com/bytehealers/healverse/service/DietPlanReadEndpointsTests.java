@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -45,8 +46,8 @@ class DietPlanReadEndpointsTests {
         aiRecommendationService = mock(AIRecommendationService.class);
         DietPlanService service = new DietPlanService(dietPlanRepository, mock(UserProfileRepository.class),
                 aiRecommendationService, mock(UserRepository.class), mock(DailyNutritionSummaryRepository.class),
-                mock(DietPlanWriter.class));
-        controller = new DietPlanController(service);
+                mock(DietPlanWriter.class), Clock.systemUTC());
+        controller = new DietPlanController(service, Clock.systemUTC());
     }
 
     @Test

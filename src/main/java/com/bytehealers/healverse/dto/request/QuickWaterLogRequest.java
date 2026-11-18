@@ -15,11 +15,6 @@ public class QuickWaterLogRequest {
     // Constructors
     public QuickWaterLogRequest() {}
 
-    public QuickWaterLogRequest(WaterPreset preset) {
-        this.preset = preset;
-        this.loggedAt = LocalDateTime.now();
-    }
-
     // Getters and Setters
     public WaterPreset getPreset() { return preset; }
     public void setPreset(WaterPreset preset) { this.preset = preset; }

@@ -12,6 +12,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -42,6 +43,8 @@ public class NutritionSyncService {
     private final DietPlanService  dietPlanService;
 
     private final NutritionCalculatorService  nutritionCalculatorService;
+
+    private final Clock clock;
 
     @Transactional
     public void syncDailySummary(Long userId, LocalDate date) {
@@ -101,7 +104,7 @@ public class NutritionSyncService {
 
             summary.setCaloriesBurned(totalCaloriesBurned);
             summary.setWaterConsumedMl(totalWater);
-            summary.setUpdatedAt(LocalDateTime.now());
+            summary.setUpdatedAt(LocalDateTime.now(clock));
 
             try {
                 summary.calculateRemainingCalories();
@@ -174,8 +177,8 @@ public class NutritionSyncService {
         DailyNutritionSummary newSummary = new DailyNutritionSummary();
         newSummary.setUser(user);
         newSummary.setDate(date);
-        newSummary.setCreatedAt(LocalDateTime.now());
-        newSummary.setUpdatedAt(LocalDateTime.now());
+        newSummary.setCreatedAt(LocalDateTime.now(clock));
+        newSummary.setUpdatedAt(LocalDateTime.now(clock));
 
         // Targets come from the day's plan when one exists, otherwise from the profile. Reading a
         // summary must never generate a plan: that is a slow AI call (and a write) hidden inside
