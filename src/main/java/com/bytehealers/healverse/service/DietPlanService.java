@@ -6,6 +6,7 @@ import com.bytehealers.healverse.exception.ResourceNotFoundException;
 import com.bytehealers.healverse.model.*;
 import com.bytehealers.healverse.repo.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +18,10 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.math.BigDecimal;
 
 @Service
@@ -32,9 +37,11 @@ public class DietPlanService {
 
     private final UserRepository userRepository;
 
-    private final MealRepository mealRepository;
-
     private final DailyNutritionSummaryRepository dailyNutritionSummaryRepository;
+
+    private final DietPlanWriter dietPlanWriter;
+
+    private final ConcurrentMap<PlanKey, CompletableFuture<DietPlan>> inFlight = new ConcurrentHashMap<>();
 
     /**
      * Generate nutritional adjustment context based on historical data
@@ -46,52 +53,83 @@ public class DietPlanService {
 
     // Placeholder methods - implement based on your business logic
 
-    @Transactional
+    /**
+     * Returns the plan for the day, generating it when missing. The AI call (seconds) runs with no
+     * transaction, no row lock and no DB connection held; only the final save is transactional.
+     * Concurrent calls for the same user and day share one AI call.
+     */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public DietPlan generateDailyPlan(Long userId, LocalDate date) {
-        User user = userRepository.findByIdWithLock(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        // Check if plan already exists
         Optional<DietPlan> existingPlan = dietPlanRepository.findByUserIdAndPlanDate(userId, date);
         if (existingPlan.isPresent()) {
             log.info("Returning existing diet plan for user: {} on date: {}", userId, date);
-            return existingPlan.get(); // Safe - checked with isPresent()
+            return existingPlan.get();
         }
-
-        UserProfile profile = user.getProfile();
-
-        if (profile == null) {
-            profile = userProfileRepository.findByUser(user)
-                    .orElseThrow(() -> new BadRequestException("Complete your health profile before generating a diet plan"));
-            user.setProfile(profile);
-        }
-
-        log.info("Generating daily diet plan for user: {} on date: {}", userId, date);
-
-        // Generate complete diet plan using AI service
-        DietPlan aiGeneratedPlan = aiRecommendationService.generateDietPlan(user);
-
-        // Update the plan with the specific date
-        aiGeneratedPlan.setPlanDate(date);
-        aiGeneratedPlan.setUser(user);
-
-        // Save the diet plan
-        DietPlan savedPlan = dietPlanRepository.save(aiGeneratedPlan);
-
-        // Save meals with proper diet plan reference
-        if (aiGeneratedPlan.getMeals() != null) {
-            for (Meal meal : aiGeneratedPlan.getMeals()) {
-                meal.setDietPlan(savedPlan);
-                mealRepository.save(meal);
-            }
-        }
-
-        log.info("Successfully generated and saved diet plan with {} meals for user: {} on date: {}",
-                aiGeneratedPlan.getMeals().size(), userId, date);
-
-        return savedPlan;
-
+        return generateOnce(new PlanKey(userId, date));
     }
 
+    private DietPlan generateOnce(PlanKey key) {
+        CompletableFuture<DietPlan> mine = new CompletableFuture<>();
+        CompletableFuture<DietPlan> running = inFlight.putIfAbsent(key, mine);
+        if (running != null) {
+            log.info("Joining in-flight diet plan generation for user: {} on date: {}", key.userId(), key.date());
+            return await(running);
+        }
+        try {
+            DietPlan plan = generateAndStore(key);
+            mine.complete(plan);
+            return plan;
+        } catch (RuntimeException e) {
+            mine.completeExceptionally(e);
+            throw e;
+        } finally {
+            inFlight.remove(key, mine);
+        }
+    }
+
+    private DietPlan generateAndStore(PlanKey key) {
+        Long userId = key.userId();
+        LocalDate date = key.date();
+
+        // A request that finished just before we registered as the owner has already stored the plan.
+        Optional<DietPlan> stored = dietPlanRepository.findByUserIdAndPlanDate(userId, date);
+        if (stored.isPresent()) {
+            return stored.get();
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        user.setProfile(userProfileRepository.findByUser(user)
+                .orElseThrow(() -> new BadRequestException("Complete your health profile before generating a diet plan")));
+
+        log.info("Generating daily diet plan for user: {} on date: {}", userId, date);
+        DietPlan generated = aiRecommendationService.generateDietPlan(user);
+
+        try {
+            DietPlan saved = dietPlanWriter.save(userId, date, generated);
+            log.info("Saved diet plan with {} meals for user: {} on date: {}", saved.getMeals().size(), userId, date);
+            return saved;
+        } catch (DataIntegrityViolationException e) {
+            // Another instance (or a request that bypassed the in-flight map) stored the day first.
+            log.info("Diet plan for user: {} on date: {} was stored concurrently, using it", userId, date);
+            return dietPlanRepository.findByUserIdAndPlanDate(userId, date).orElseThrow(() -> e);
+        }
+    }
+
+    private static DietPlan await(CompletableFuture<DietPlan> running) {
+        try {
+            return running.join();
+        } catch (CompletionException e) {
+            if (e.getCause() instanceof RuntimeException cause) {
+                throw cause;
+            }
+            throw e;
+        }
+    }
+
+    private record PlanKey(Long userId, LocalDate date) {}
+
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public List<DietPlan> getWeeklyPlans(Long userId, LocalDate date) {
         LocalDate startOfWeek = date.with(DayOfWeek.MONDAY);
         LocalDate endOfWeek = startOfWeek.plusDays(6);
@@ -136,13 +174,10 @@ public class DietPlanService {
         return dietPlanRepository.findByUserIdAndPlanDate(userId, date);
     }
 
-    // REQUIRES_NEW: this is called from NutritionSyncService while a log-food/
-    // water/exercise transaction is already active. If AI generation fails here
-    // (e.g. invalid OpenAI key), only THIS isolated transaction rolls back —
-    // without REQUIRES_NEW, the failure would mark the caller's shared
-    // transaction rollback-only, causing an UnexpectedRollbackException at
-    // commit time that fails the unrelated logging request too.
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    // NOT_SUPPORTED: generation can take a minute and must not run inside a transaction. Callers such
+    // as logging and gamification may already have one; suspending it keeps an AI failure from
+    // marking their transaction rollback-only (UnexpectedRollbackException at commit).
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public DietPlan getDailyPlan(Long userId, LocalDate date) {
         log.info("Getting daily diet plan for user: {} on date: {}", userId, date);
 
