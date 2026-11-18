@@ -23,9 +23,6 @@ public interface DailyNutritionSummaryRepository extends JpaRepository<DailyNutr
     @Query(value = "SELECT * FROM daily_nutrition_summaries WHERE user_id = :userId ORDER BY date DESC LIMIT 7", nativeQuery = true)
     List<DailyNutritionSummary> findLast7DaysSummaryNative(@Param("userId") Long userId);
 
-    @Query("SELECT d FROM DailyNutritionSummary d WHERE d.user.id = :userId AND d.date = CURRENT_DATE")
-    Optional<DailyNutritionSummary> findTodaysSummary(@Param("userId") Long userId);
-
     @Query("SELECT AVG(d.consumedCalories) FROM DailyNutritionSummary d WHERE d.user.id = :userId AND d.date BETWEEN :startDate AND :endDate")
     Double getAverageCaloriesInPeriod(@Param("userId") Long userId, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
 

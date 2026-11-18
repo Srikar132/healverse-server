@@ -15,7 +15,6 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -46,6 +45,8 @@ public class NutritionSyncService {
 
     private final Clock clock;
 
+    private final UserTime userTime;
+
     @Transactional
     public void syncDailySummary(Long userId, LocalDate date) {
         try {
@@ -55,8 +56,9 @@ public class NutritionSyncService {
             DailyNutritionSummary summary = getOrCreateSummary(user, date);
             // The plan may have been generated after the summary row was first created.
             applyPlanTargets(summary, userId, date);
-            LocalDateTime dayStart = date.atStartOfDay();
-            LocalDateTime dayEnd = date.atTime(LocalTime.MAX);
+            UserTime.DayRange day = userTime.dayRange(userId, date);
+            LocalDateTime dayStart = day.start();
+            LocalDateTime dayEnd = day.endInclusive();
 
             List<FoodLog> foodLogs = foodLogRepository.findFoodLogsByUserIdAndDateRange(userId, dayStart, dayEnd);
             BigDecimal totalCalories = BigDecimal.ZERO;
@@ -136,32 +138,32 @@ public class NutritionSyncService {
 
     @Async
     public void syncAfterFoodLogAsync(Long userId, LocalDateTime loggedAt) {
-        syncDailySummary(userId, loggedAt.toLocalDate());
+        syncDailySummary(userId, userTime.localDateOf(userId, loggedAt));
     }
 
     @Async
     public void syncAfterExerciseLogAsync(Long userId, LocalDateTime loggedAt) {
-        syncDailySummary(userId, loggedAt.toLocalDate());
+        syncDailySummary(userId, userTime.localDateOf(userId, loggedAt));
     }
 
     @Async
     public void syncAfterWaterLogAsync(Long userId, LocalDateTime loggedAt) {
-        syncDailySummary(userId, loggedAt.toLocalDate());
+        syncDailySummary(userId, userTime.localDateOf(userId, loggedAt));
     }
 
     @Transactional
     public void syncAfterFoodLog(Long userId, LocalDateTime loggedAt) {
-        syncDailySummary(userId, loggedAt.toLocalDate());
+        syncDailySummary(userId, userTime.localDateOf(userId, loggedAt));
     }
 
     @Transactional
     public void syncAfterExerciseLog(Long userId, LocalDateTime loggedAt) {
-        syncDailySummary(userId, loggedAt.toLocalDate());
+        syncDailySummary(userId, userTime.localDateOf(userId, loggedAt));
     }
 
     @Transactional
     public void syncAfterWaterLog(Long userId, LocalDateTime loggedAt) {
-        syncDailySummary(userId, loggedAt.toLocalDate());
+        syncDailySummary(userId, userTime.localDateOf(userId, loggedAt));
     }
 
     private DailyNutritionSummary getOrCreateSummary(User user, LocalDate date) {

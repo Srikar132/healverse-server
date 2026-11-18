@@ -14,7 +14,6 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -30,6 +29,8 @@ public class ExerciseLoggingService {
     private final NutritionSyncService nutritionSyncService;
 
     private final Clock clock;
+
+    private final UserTime userTime;
 
     private final UserRepository userRepository; // 🔥 Added to fetch User by username
 
@@ -77,16 +78,15 @@ public class ExerciseLoggingService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        LocalDateTime startOfDay = LocalDate.now(clock).atStartOfDay();
-        LocalDateTime endOfDay = startOfDay.toLocalDate().atTime(LocalTime.MAX);
-        return exerciseLogRepository.findByUserIdAndLoggedAtBetween(user.getId(), startOfDay, endOfDay);
+        return getExerciseLogsByDate(user.getId(), userTime.today(userId));
     }
 
     public List<ExerciseLog> getExerciseLogsByDate(Long userId, LocalDate date) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        return exerciseLogRepository.findExerciseLogsByDate(user.getId(), date);
+        UserTime.DayRange day = userTime.dayRange(userId, date);
+        return exerciseLogRepository.findByUserIdAndLoggedAtBetween(user.getId(), day.start(), day.endInclusive());
     }
 
 
@@ -94,10 +94,9 @@ public class ExerciseLoggingService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        LocalDateTime startDateTime = startDate.atStartOfDay();
-        LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
+        UserTime.DayRange range = userTime.range(userId, startDate, endDate);
 
-        return exerciseLogRepository.findByUserIdAndLoggedAtBetween(user.getId(), startDateTime, endDateTime);
+        return exerciseLogRepository.findByUserIdAndLoggedAtBetween(user.getId(), range.start(), range.endInclusive());
     }
 
     public ExerciseLog updateExerciseLog(Long exerciseLogId, LogExerciseRequest request, Long userId) {
