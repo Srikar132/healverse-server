@@ -1,8 +1,10 @@
 package com.bytehealers.healverse.controller;
 
+import com.bytehealers.healverse.dto.request.TimeZoneRequest;
 import com.bytehealers.healverse.dto.request.UserProfileDTO;
 import com.bytehealers.healverse.dto.response.ApiResponse;
 import com.bytehealers.healverse.exception.ResourceNotFoundException;
+import com.bytehealers.healverse.model.User;
 import com.bytehealers.healverse.model.UserProfile;
 import com.bytehealers.healverse.service.UserService;
 import com.bytehealers.healverse.security.CurrentUserId;
@@ -11,7 +13,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/user")
@@ -39,6 +40,12 @@ public class UserController {
     public ResponseEntity<ApiResponse<UserProfile>> updateUserProfile(@Valid @RequestBody UserProfileDTO profileDTO, @CurrentUserId Long userId) {
         UserProfile profile = userService.updateUserProfile(userId, profileDTO);
         return ResponseEntity.ok(ApiResponse.success("User profile updated successfully", profile));
+    }
+
+    @PutMapping("/time-zone")
+    public ResponseEntity<ApiResponse<String>> updateTimeZone(@Valid @RequestBody TimeZoneRequest request, @CurrentUserId Long userId) {
+        User user = userService.updateTimeZone(userId, request.getTimeZone());
+        return ResponseEntity.ok(ApiResponse.success("Time zone updated successfully", user.getTimeZone()));
     }
 
     @GetMapping("/me")
