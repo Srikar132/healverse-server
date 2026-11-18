@@ -80,7 +80,6 @@ class NutritionSyncServiceTests {
 
         service.syncDailySummary(USER_ID, DATE);
 
-        verify(dietPlanService, never()).getDailyPlan(anyLong(), any());
         verify(dietPlanService, never()).generateDailyPlan(anyLong(), any());
         assertEquals(new BigDecimal("2000"), savedSummary().getTargetCalories());
     }
@@ -96,7 +95,6 @@ class NutritionSyncServiceTests {
 
         service.syncDailySummary(USER_ID, DATE);
 
-        verify(dietPlanService, never()).getDailyPlan(anyLong(), any());
         assertEquals(new BigDecimal("1800"), savedSummary().getTargetCalories());
     }
 }

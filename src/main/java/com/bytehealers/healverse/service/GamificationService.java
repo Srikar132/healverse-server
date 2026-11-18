@@ -93,7 +93,7 @@ public class GamificationService {
         LocalDate today = LocalDate.now();
 
         // Get today's diet plan for user
-        DietPlan todaysPlan = dietPlanService.getTodaysDietPlan(userId);
+        DietPlan todaysPlan = dietPlanService.findExistingPlan(userId, today).orElse(null);
         if (todaysPlan == null) {
             return; // No diet plan to compare
         }
