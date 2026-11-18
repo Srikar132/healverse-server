@@ -9,7 +9,6 @@ import org.springframework.stereotype.Repository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -31,13 +30,6 @@ public interface WaterLogRepository extends JpaRepository<WaterLog, Long> {
 
     @Query("SELECT COALESCE(SUM(w.amountMl), 0) FROM WaterLog w WHERE w.user.id = :userId AND CAST(w.loggedAt AS date) = CURRENT_DATE")
     BigDecimal findTotalWaterIntakeToday(@Param("userId") Long userId);
-
-    // Optional: if you still want the alternative method
-    default List<WaterLog> findTodaysWaterLogsAlternative(Long userId) {
-        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
-        LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX);
-        return findByUserIdAndLoggedAtBetween(userId, startOfDay, endOfDay);
-    }
 
     @Query("SELECT w FROM WaterLog w " +
             "WHERE w.user.id = :userId " +

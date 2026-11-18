@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -27,10 +28,12 @@ public class GamificationService {
 
     private final DietPlanService dietPlanService;
 
+    private final Clock clock;
+
     // === LOGIN STREAK ===
 
     public void recordDailyLogin(Long userId) {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
         UserStreaks streak = getOrCreateStreak(userId);
 
         // Check if already logged in today
@@ -90,7 +93,7 @@ public class GamificationService {
     // === DIET FOLLOWING ===
 
     public void recordFoodLog(Long userId, FoodLog foodLog) {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
 
         // Get today's diet plan for user
         DietPlan todaysPlan = dietPlanService.findExistingPlan(userId, today).orElse(null);
@@ -263,7 +266,7 @@ public class GamificationService {
 
     @Transactional
     private void awardPoints(Long userId, int points, PointReason reason, String description) {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
 
         // Update daily points
         DailyPoints dailyPoints = getOrCreateDailyPoints(userId, today);
@@ -294,7 +297,7 @@ public class GamificationService {
 
     public GamificationSummaryDTO getUserSummary(Long userId) {
         UserStreaks streak = getOrCreateStreak(userId);
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
         DailyPoints todayPoints = getDailyPoints(userId, today);
         List<PointsHistory> recentHistory = historyRepository
                 .findByUserIdAndDateAfter(userId, today.minusDays(7));
@@ -313,11 +316,11 @@ public class GamificationService {
     // === ADDITIONAL PUBLIC METHODS ===
 
     public DailyPoints getTodayPoints(Long userId) {
-        return getDailyPoints(userId, LocalDate.now());
+        return getDailyPoints(userId, LocalDate.now(clock));
     }
 
     public List<PointsHistory> getUserPointsHistory(Long userId, int days) {
-        LocalDate fromDate = LocalDate.now().minusDays(days);
+        LocalDate fromDate = LocalDate.now(clock).minusDays(days);
         return historyRepository.findByUserIdAndDateAfter(userId, fromDate);
     }
 

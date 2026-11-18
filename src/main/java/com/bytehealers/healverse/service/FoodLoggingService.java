@@ -21,6 +21,7 @@ import org.springframework.util.MimeTypeUtils;
 import java.util.Optional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -35,7 +36,6 @@ public class FoodLoggingService {
 
     // log factory
 
-
     private final FoodLogRepository foodLogRepository;
 
     private final UserRepository userRepository;
@@ -47,6 +47,8 @@ public class FoodLoggingService {
     private final ObjectMapper objectMapper;
 
     private final GamificationService gamificationService;
+
+    private final Clock clock;
 
     @Value("${app.ai.vision-model}")
     private String visionModel;
@@ -188,8 +190,8 @@ public class FoodLoggingService {
         foodLog.setMealName(aiFoodResponse.getMealName());
         foodLog.setImageUrl(imageUrl);
         foodLog.setImageDescription(imageDescription);
-        foodLog.setLoggedAt(request.getLoggedAt() != null ? request.getLoggedAt() : LocalDateTime.now());
-        foodLog.setCreatedAt(LocalDateTime.now());
+        foodLog.setLoggedAt(request.getLoggedAt() != null ? request.getLoggedAt() : LocalDateTime.now(clock));
+        foodLog.setCreatedAt(LocalDateTime.now(clock));
         foodLog.setIsFromCamera(isFromCamera);
 
         List<FoodItem> foodItems = aiFoodResponse.getItems().stream()
@@ -214,7 +216,7 @@ public class FoodLoggingService {
     }
 
     public List<FoodLogResponse> getTodaysFoodLogs(Long userId) {
-        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
+        LocalDateTime startOfDay = LocalDate.now(clock).atStartOfDay();
         LocalDateTime endOfDay = startOfDay.plusDays(1);
         List<FoodLog> foodLogs = foodLogRepository.findTodaysFoodLogsByUserId(userId, startOfDay, endOfDay);
         return foodLogs.stream()

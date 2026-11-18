@@ -29,10 +29,6 @@ public interface DailyNutritionSummaryRepository extends JpaRepository<DailyNutr
     @Query("SELECT AVG(d.consumedCalories) FROM DailyNutritionSummary d WHERE d.user.id = :userId AND d.date BETWEEN :startDate AND :endDate")
     Double getAverageCaloriesInPeriod(@Param("userId") Long userId, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
 
-    default Optional<DailyNutritionSummary> findTodaysSummaryAlternative(Long userId) {
-        return findByUserIdAndDate(userId, LocalDate.now());
-    }
-
 
 
     /**
