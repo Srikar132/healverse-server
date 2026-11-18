@@ -46,8 +46,8 @@ class DietPlanReadEndpointsTests {
         aiRecommendationService = mock(AIRecommendationService.class);
         DietPlanService service = new DietPlanService(dietPlanRepository, mock(UserProfileRepository.class),
                 aiRecommendationService, mock(UserRepository.class), mock(DailyNutritionSummaryRepository.class),
-                mock(DietPlanWriter.class), Clock.systemUTC());
-        controller = new DietPlanController(service, Clock.systemUTC());
+                mock(DietPlanWriter.class), new UserTime(Clock.systemUTC(), mock(UserRepository.class)));
+        controller = new DietPlanController(service, new UserTime(Clock.systemUTC(), mock(UserRepository.class)));
     }
 
     @Test

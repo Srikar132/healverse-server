@@ -15,7 +15,6 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -31,6 +30,8 @@ public class WaterLoggingService {
     private final UserRepository userRepository;
 
     private final Clock clock;
+
+    private final UserTime userTime;
 
     public WaterLog logWater(LogWaterRequest request, Long userId) {
         User user = getUserOrThrow(userId); // 🔥 Fetch the user
@@ -82,21 +83,23 @@ public class WaterLoggingService {
     }
 
     public List<WaterLog> getTodaysWaterLogs(Long userId) {
-        return waterLogRepository.findTodaysWaterLogs(userId);
+        return getWaterLogsByDate(userId, userTime.today(userId));
     }
 
     public List<WaterLog> getWaterLogsByDate(Long userId, LocalDate date) {
-        return waterLogRepository.findWaterLogsByDate(userId, date);
+        UserTime.DayRange day = userTime.dayRange(userId, date);
+        return waterLogRepository.findByUserIdAndLoggedAtBetween(userId, day.start(), day.endInclusive());
     }
 
     public BigDecimal getTotalWaterIntakeToday(Long userId) {
-        return waterLogRepository.findTotalWaterIntakeToday(userId);
+        return getTodaysWaterLogs(userId).stream()
+                .map(WaterLog::getAmountMl)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     public List<WaterLog> getWaterLogsByDateRange(Long userId, LocalDate startDate, LocalDate endDate) {
-        LocalDateTime startDateTime = startDate.atStartOfDay();
-        LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
-        return waterLogRepository.findByUserIdAndLoggedAtBetween(userId, startDateTime, endDateTime);
+        UserTime.DayRange range = userTime.range(userId, startDate, endDate);
+        return waterLogRepository.findByUserIdAndLoggedAtBetween(userId, range.start(), range.endInclusive());
     }
 
     public boolean deleteWaterLog(Long waterLogId, Long userId) {

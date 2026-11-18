@@ -12,7 +12,6 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.extern.slf4j.Slf4j;
 
-import java.time.Clock;
 import java.time.LocalDate;
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
@@ -44,7 +43,7 @@ public class DietPlanService {
 
     private final ConcurrentMap<PlanKey, CompletableFuture<DietPlan>> inFlight = new ConcurrentHashMap<>();
 
-    private final Clock clock;
+    private final UserTime userTime;
 
     /**
      * Generate nutritional adjustment context based on historical data
@@ -290,7 +289,7 @@ public class DietPlanService {
      * Get user's current diet plan (today's plan)
      */
     public DietPlan getCurrentDietPlan(Long userId) {
-        return getDailyPlan(userId, LocalDate.now(clock));
+        return getDailyPlan(userId, userTime.today(userId));
     }
 
     /**

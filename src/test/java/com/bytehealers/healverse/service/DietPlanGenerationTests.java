@@ -56,7 +56,7 @@ class DietPlanGenerationTests {
         aiRecommendationService = mock(AIRecommendationService.class);
         writer = mock(DietPlanWriter.class);
         service = new DietPlanService(dietPlanRepository, userProfileRepository, aiRecommendationService,
-                userRepository, mock(DailyNutritionSummaryRepository.class), writer, Clock.systemUTC());
+                userRepository, mock(DailyNutritionSummaryRepository.class), writer, new UserTime(Clock.systemUTC(), mock(UserRepository.class)));
 
         user = new User();
         user.setId(USER_ID);

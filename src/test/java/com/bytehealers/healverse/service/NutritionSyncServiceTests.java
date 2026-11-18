@@ -62,7 +62,7 @@ class NutritionSyncServiceTests {
         when(waterRepository.findByUserIdAndLoggedAtBetween(anyLong(), any(), any())).thenReturn(List.of());
 
         service = new NutritionSyncService(summaryRepository, exerciseRepository, waterRepository,
-                userRepository, foodRepository, dietPlanService, calculator, Clock.systemUTC());
+                userRepository, foodRepository, dietPlanService, calculator, Clock.systemUTC(), new UserTime(Clock.systemUTC(), mock(UserRepository.class)));
     }
 
     private DailyNutritionSummary savedSummary() {

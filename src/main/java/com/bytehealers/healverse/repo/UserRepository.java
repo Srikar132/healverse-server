@@ -23,4 +23,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT u FROM User u WHERE u.id = :userId")
     Optional<User> findByIdWithLock(@Param("userId") Long userId);
 
+    @Query("SELECT u.timeZone FROM User u WHERE u.id = :userId")
+    Optional<String> findTimeZoneById(@Param("userId") Long userId);
+
 }
