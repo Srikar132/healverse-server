@@ -49,6 +49,9 @@ public class UserService {
         user.setUsername(username);
         user.setEmail(email);
         user.setPassword(passwordEncoder.encode(credentials.getPassword()));
+        if (request.getTimeZone() != null && !request.getTimeZone().isBlank()) {
+            user.setTimeZone(TimeZones.parse(request.getTimeZone()).getId());
+        }
 
         User savedUser = userRepository.save(user);
 
@@ -98,6 +101,14 @@ public class UserService {
 
         user.setProfile(profile);
         return userProfileService.createProfile(profile);
+    }
+
+    @Transactional
+    public User updateTimeZone(Long userId, String timeZone) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        user.setTimeZone(TimeZones.parse(timeZone).getId());
+        return userRepository.save(user);
     }
 
     public Optional<User> findById(Long userId) {
