@@ -7,13 +7,13 @@ import com.bytehealers.healverse.exception.ResourceNotFoundException;
 import com.bytehealers.healverse.model.*;
 import com.bytehealers.healverse.repo.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 import java.math.BigDecimal;
 
 @RequiredArgsConstructor
@@ -30,6 +30,8 @@ public class GamificationService {
     private final DietPlanService dietPlanService;
 
     private final UserTime userTime;
+
+    private final GamificationRowCreator rowCreator;
 
     // === LOGIN STREAK ===
 
@@ -217,55 +219,28 @@ public class GamificationService {
     }    // === HELPER METHODS ===
 
     private UserStreaks getOrCreateStreak(Long userId) {
-        // Try to find existing first
-        Optional<UserStreaks> existingStreak = streakRepository.findByUserId(userId);
-        if (existingStreak.isPresent()) {
-            return existingStreak.get();
-        }
-
-        // Create new streak with retry logic for race conditions
-        try {
-            UserStreaks newStreak = new UserStreaks();
-            newStreak.setUserId(userId);
-            newStreak.setCurrentLoginStreak(0);
-            newStreak.setLongestLoginStreak(0);
-            newStreak.setLastLoginDate(null);
-            newStreak.setTotalPoints(0);
-            return streakRepository.save(newStreak);
-        } catch (Exception e) {
-            // Handle potential race condition - another thread created the record
-            Optional<UserStreaks> retryStreak = streakRepository.findByUserId(userId);
-            if (retryStreak.isPresent()) {
-                return retryStreak.get();
+        return streakRepository.findByUserId(userId).orElseGet(() -> {
+            try {
+                rowCreator.createStreak(userId);
+            } catch (DataAccessException raced) {
+                // Another request created the row first; the lookup below finds it.
             }
-            throw new RuntimeException("Failed to create or retrieve UserStreaks for userId: " + userId, e);
-        }
+            return streakRepository.findByUserId(userId).orElseThrow(
+                    () -> new IllegalStateException("Could not create or find UserStreaks for userId: " + userId));
+        });
     }
 
     private DailyPoints getOrCreateDailyPoints(Long userId, LocalDate date) {
-        // Try to find existing first
-        Optional<DailyPoints> existing = dailyPointsRepository.findByUserIdAndDate(userId, date);
-        if (existing.isPresent()) {
-            return existing.get();
-        }
-
-        // Create new daily points with retry logic for race conditions
-        try {
-            DailyPoints newPoints = new DailyPoints();
-            newPoints.setUserId(userId);
-            newPoints.setDate(date);
-            newPoints.setLoginPoints(0);
-            newPoints.setDietPoints(0);
-            newPoints.setTotalPoints(0);
-            return dailyPointsRepository.save(newPoints);
-        } catch (Exception e) {
-            // Handle potential race condition - unique constraint on (userId, date)
-            Optional<DailyPoints> retryPoints = dailyPointsRepository.findByUserIdAndDate(userId, date);
-            if (retryPoints.isPresent()) {
-                return retryPoints.get();
+        return dailyPointsRepository.findByUserIdAndDate(userId, date).orElseGet(() -> {
+            try {
+                rowCreator.createDailyPoints(userId, date);
+            } catch (DataAccessException raced) {
+                // Another request created the row first; the lookup below finds it.
             }
-            throw new RuntimeException("Failed to create or retrieve DailyPoints for userId: " + userId + ", date: " + date, e);
-        }
+            return dailyPointsRepository.findByUserIdAndDate(userId, date).orElseThrow(
+                    () -> new IllegalStateException(
+                            "Could not create or find DailyPoints for userId: " + userId + ", date: " + date));
+        });
     }
 
     private DailyPoints getDailyPoints(Long userId, LocalDate date) {

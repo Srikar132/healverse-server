@@ -51,7 +51,7 @@ class GamificationServiceTests {
         UserTime userTime = mock(UserTime.class);
         when(userTime.today(USER_ID)).thenReturn(TODAY);
         service = new GamificationService(streakRepository, dailyPointsRepository, historyRepository,
-                dietPlanService, userTime);
+                dietPlanService, userTime, mock(GamificationRowCreator.class));
 
         todayPoints = new DailyPoints();
         streak = new UserStreaks();
