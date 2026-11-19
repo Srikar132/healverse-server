@@ -12,6 +12,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/gamification")
+@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class GamificationController {
 

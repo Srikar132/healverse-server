@@ -2,12 +2,14 @@ package com.bytehealers.healverse.controller;
 
 import com.bytehealers.healverse.model.enums.MealType;
 import com.bytehealers.healverse.dto.request.FoodLogRequest;
+import com.bytehealers.healverse.dto.request.UpdateFoodLogRequest;
 import com.bytehealers.healverse.dto.response.ApiResponse;
 import com.bytehealers.healverse.exception.BadRequestException;
 import com.bytehealers.healverse.dto.response.FoodLogResponse;
 import com.bytehealers.healverse.service.FoodLoggingService;
 import com.bytehealers.healverse.service.IdempotencyService;
 import com.bytehealers.healverse.security.CurrentUserId;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
@@ -83,7 +85,7 @@ public class FoodLoggingController {
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<FoodLogResponse>> updateFoodLog(
             @PathVariable Long id,
-            @RequestBody FoodLogRequest request, @CurrentUserId Long userId) {
+            @Valid @RequestBody UpdateFoodLogRequest request, @CurrentUserId Long userId) {
         FoodLogResponse response = foodLoggingService.updateFoodLog(userId, id, request);
         return ResponseEntity.ok(ApiResponse.success("Food log updated successfully", response));
     }
