@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import lombok.ToString;
@@ -17,6 +18,7 @@ import java.util.List;
 @Entity
 @Table(name = "meals")
 @Data
+@EqualsAndHashCode(exclude = {"dietPlan"})
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString(exclude = "dietPlan")

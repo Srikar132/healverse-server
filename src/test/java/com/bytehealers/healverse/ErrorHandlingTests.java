@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.ResultActions;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -159,7 +160,7 @@ class ErrorHandlingTests {
 
         DietPlan plan = new DietPlan();
         plan.setUser(userRepository.findById(((Number) owner.get("id")).longValue()).orElseThrow());
-        plan.setPlanDate(LocalDate.now());
+        plan.setPlanDate(LocalDate.now(ZoneOffset.UTC));
         plan.setTotalCalories(new BigDecimal("2000"));
         plan.setTotalProtein(new BigDecimal("100"));
         plan.setTotalCarbs(new BigDecimal("250"));

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
@@ -16,6 +17,7 @@ import java.util.List;
 @Table(name = "diet_plans", uniqueConstraints = @UniqueConstraint(
         name = "uk_diet_plans_user_date", columnNames = {"user_id", "plan_date"}))
 @Data
+@EqualsAndHashCode(exclude = {"user", "meals"})
 @NoArgsConstructor
 @AllArgsConstructor
 public class DietPlan {

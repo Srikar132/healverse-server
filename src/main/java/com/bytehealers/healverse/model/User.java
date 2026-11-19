@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
@@ -16,6 +17,7 @@ import java.util.List;
         @Index(name = "idx_users_email", columnList = "email")
 })
 @Data
+@EqualsAndHashCode(exclude = {"profile", "conversations", "exerciseLogs", "summaries", "waterLogs", "dietPlans"})
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString(exclude = {"conversations" , "exerciseLogs" , "summaries" , "waterLogs" , "dietPlans"})
