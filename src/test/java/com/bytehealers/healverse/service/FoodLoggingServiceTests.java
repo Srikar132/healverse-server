@@ -37,7 +37,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -59,6 +61,7 @@ class FoodLoggingServiceTests {
 
     private FoodLogRepository foodLogRepository;
     private NutritionSyncService nutritionSyncService;
+    private GamificationService gamificationService;
     private ChatClient chatClient;
     private FoodLoggingService service;
 
@@ -66,10 +69,11 @@ class FoodLoggingServiceTests {
     void setUp() {
         foodLogRepository = mock(FoodLogRepository.class);
         nutritionSyncService = mock(NutritionSyncService.class);
+        gamificationService = mock(GamificationService.class);
         chatClient = mock(ChatClient.class, RETURNS_DEEP_STUBS);
         UserRepository userRepository = mock(UserRepository.class);
         service = new FoodLoggingService(foodLogRepository, userRepository, nutritionSyncService, chatClient,
-                new ObjectMapper(), mock(GamificationService.class), Clock.systemUTC(), mock(UserTime.class));
+                new ObjectMapper(), gamificationService, Clock.systemUTC(), mock(UserTime.class));
         ReflectionTestUtils.setField(service, "reasoningEffort", "");
         ReflectionTestUtils.setField(service, "foodMaxTokens", 1200);
 
@@ -212,6 +216,40 @@ class FoodLoggingServiceTests {
         verify(nutritionSyncService, never()).syncAfterFoodLogAsync(any(), any());
         TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
         verify(nutritionSyncService).syncAfterFoodLogAsync(USER_ID, LOGGED_AT);
+    }
+
+    @Test
+    void pointsAreRequestedOnlyAfterTheTransactionCommits() {
+        aiReturns(AI_JSON);
+        TransactionSynchronizationManager.initSynchronization();
+
+        service.logFood(USER_ID, null, descriptionRequest());
+
+        verify(gamificationService, never()).recordFoodLog(any(), any());
+        TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
+        verify(gamificationService).recordFoodLog(eq(USER_ID), any(FoodLog.class));
+    }
+
+    @Test
+    void pointsAreRequestedAtOnceWhenNoTransactionIsActive() {
+        aiReturns(AI_JSON);
+
+        service.logFood(USER_ID, null, descriptionRequest());
+
+        verify(gamificationService).recordFoodLog(eq(USER_ID), any(FoodLog.class));
+    }
+
+    @Test
+    void aGamificationFailureDoesNotFailTheFoodLog() {
+        aiReturns(AI_JSON);
+        doThrow(new IllegalStateException("points are down")).when(gamificationService).recordFoodLog(any(), any());
+        TransactionSynchronizationManager.initSynchronization();
+
+        FoodLogResponse response = service.logFood(USER_ID, null, descriptionRequest());
+        TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
+
+        assertEquals("Eggs and banana", response.getMealName());
+        verify(gamificationService).recordFoodLog(eq(USER_ID), any(FoodLog.class));
     }
 
     @Test

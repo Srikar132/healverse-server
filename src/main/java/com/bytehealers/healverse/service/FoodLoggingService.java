@@ -15,6 +15,7 @@ import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.util.MimeType;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -31,6 +32,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @RequiredArgsConstructor
 @Service
 @Transactional
@@ -116,12 +118,11 @@ public class FoodLoggingService {
 
         // The photo is analysed but not stored: there is no image storage yet, so imageUrl stays null
         // (the client shows no thumbnail) rather than saving a placeholder URL.
-        FoodLogResponse res = createFoodLog(userId, request, aiFoodResponse, hasImage, null,
+        FoodLog foodLog = createFoodLog(userId, request, aiFoodResponse, hasImage, null,
                 hasImage ? aiFoodResponse.getDescription() : null);
-        syncSummaryAfterCommit(userId, res.getLoggedAt());
-
-        // TODO: gamification points are disabled here (StackOverflowError - investigate gamification recursion)
-        return res;
+        syncSummaryAfterCommit(userId, foodLog.getLoggedAt());
+        awardPointsAfterCommit(userId, foodLog);
+        return convertToResponse(foodLog);
     }
 
     private AIFoodResponse analyseMeal(MultipartFile image, MimeType imageType, String description) {
@@ -187,7 +188,32 @@ public class FoodLoggingService {
         });
     }
 
-    private FoodLogResponse createFoodLog(Long userId, FoodLogRequest request, AIFoodResponse aiFoodResponse,
+    /**
+     * Awards diet-plan points once the food log is committed. Best effort: points are a bonus, so a
+     * failure here is logged and never fails or rolls back the food log.
+     */
+    private void awardPointsAfterCommit(Long userId, FoodLog foodLog) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            awardPoints(userId, foodLog);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                awardPoints(userId, foodLog);
+            }
+        });
+    }
+
+    private void awardPoints(Long userId, FoodLog foodLog) {
+        try {
+            gamificationService.recordFoodLog(userId, foodLog);
+        } catch (Exception e) {
+            log.warn("Could not award points for food log {} of user {}", foodLog.getId(), userId, e);
+        }
+    }
+
+    private FoodLog createFoodLog(Long userId, FoodLogRequest request, AIFoodResponse aiFoodResponse,
                                           boolean isFromCamera, String imageUrl, String imageDescription) {
 
         User user = userRepository.findById(userId)
@@ -220,8 +246,7 @@ public class FoodLoggingService {
 
         foodLog.setItems(foodItems);
 
-        FoodLog savedFoodLog = foodLogRepository.save(foodLog);
-        return convertToResponse(savedFoodLog);
+        return foodLogRepository.save(foodLog);
     }
 
     public List<FoodLogResponse> getTodaysFoodLogs(Long userId) {
