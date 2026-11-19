@@ -21,6 +21,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/water-logs")
+@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class WaterLoggingController {
 

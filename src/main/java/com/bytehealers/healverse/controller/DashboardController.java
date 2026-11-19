@@ -16,6 +16,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/dashboard")
+@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class DashboardController {
 
