@@ -2,6 +2,7 @@ package com.bytehealers.healverse.service;
 
 import com.bytehealers.healverse.dto.request.FoodLogRequest;
 import com.bytehealers.healverse.dto.response.FoodLogResponse;
+import com.bytehealers.healverse.exception.BadRequestException;
 import com.bytehealers.healverse.exception.ExternalServiceException;
 import com.bytehealers.healverse.exception.ResourceNotFoundException;
 import com.bytehealers.healverse.model.FoodLog;
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -22,8 +24,11 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -79,6 +84,15 @@ class FoodLoggingServiceTests {
         when(chatClient.prompt().options(any()).user(anyString()).call().content()).thenReturn(content);
     }
 
+    private void photoAnalysisReturns(String content) {
+        when(chatClient.prompt().options(any()).user(org.mockito.ArgumentMatchers.<Consumer<ChatClient.PromptUserSpec>>any())
+                .call().content()).thenReturn(content);
+    }
+
+    private static MockMultipartFile photo() {
+        return new MockMultipartFile("image", "meal.jpg", "image/jpeg", new byte[]{1, 2, 3});
+    }
+
     private FoodLogRequest descriptionRequest() {
         FoodLogRequest request = new FoodLogRequest();
         request.setMealType(MealType.BREAKFAST);
@@ -104,7 +118,7 @@ class FoodLoggingServiceTests {
     void textMealBecomesAFoodLogWithTheAnalysedItemsAndSyncsItsDay() {
         aiReturns(AI_JSON);
 
-        FoodLogResponse response = service.logFoodByDescription(USER_ID, descriptionRequest());
+        FoodLogResponse response = service.logFood(USER_ID, null, descriptionRequest());
 
         assertEquals("Eggs and banana", response.getMealName());
         assertEquals(2, response.getItems().size());
@@ -114,11 +128,69 @@ class FoodLoggingServiceTests {
     }
 
     @Test
+    void photoWithATextNoteIsOneAnalysisMarkedAsFromCamera() {
+        photoAnalysisReturns(AI_JSON);
+
+        FoodLogResponse response = service.logFood(USER_ID, photo(), descriptionRequest());
+
+        assertTrue(response.getIsFromCamera());
+        assertEquals(2, response.getItems().size());
+        verify(nutritionSyncService).syncAfterFoodLogAsync(USER_ID, LOGGED_AT);
+    }
+
+    @Test
+    void photoAloneNeedsNoDescription() {
+        photoAnalysisReturns(AI_JSON);
+        FoodLogRequest request = descriptionRequest();
+        request.setDescription(null);
+
+        FoodLogResponse response = service.logFood(USER_ID, photo(), request);
+
+        assertTrue(response.getIsFromCamera());
+    }
+
+    @Test
+    void textOnlyMealIsNotMarkedAsFromCamera() {
+        aiReturns(AI_JSON);
+
+        assertFalse(service.logFood(USER_ID, null, descriptionRequest()).getIsFromCamera());
+    }
+
+    @Test
+    void aMealNeedsAPhotoOrADescription() {
+        FoodLogRequest request = descriptionRequest();
+        request.setDescription("   ");
+
+        assertThrows(BadRequestException.class, () -> service.logFood(USER_ID, null, request));
+        assertThrows(BadRequestException.class,
+                () -> service.logFood(USER_ID, new MockMultipartFile("image", new byte[0]), request));
+
+        verify(foodLogRepository, never()).save(any());
+    }
+
+    @Test
+    void anOverlongDescriptionIsRejectedBeforeTheAiIsCalled() {
+        FoodLogRequest request = descriptionRequest();
+        request.setDescription("x".repeat(501));
+
+        assertThrows(BadRequestException.class, () -> service.logFood(USER_ID, null, request));
+
+        verify(foodLogRepository, never()).save(any());
+    }
+
+    @Test
+    void unsupportedPhotoTypeIsRejected() {
+        MockMultipartFile gif = new MockMultipartFile("image", "meal.gif", "image/gif", new byte[]{1});
+
+        assertThrows(BadRequestException.class, () -> service.logFood(USER_ID, gif, descriptionRequest()));
+    }
+
+    @Test
     void unusableAiAnswerSavesNothingAndSyncsNothing() {
         aiReturns("not json at all");
 
         assertThrows(ExternalServiceException.class,
-                () -> service.logFoodByDescription(USER_ID, descriptionRequest()));
+                () -> service.logFood(USER_ID, null, descriptionRequest()));
 
         verify(foodLogRepository, never()).save(any());
         verify(nutritionSyncService, never()).syncAfterFoodLogAsync(any(), any());
@@ -129,7 +201,7 @@ class FoodLoggingServiceTests {
         aiReturns(AI_JSON);
         TransactionSynchronizationManager.initSynchronization();
 
-        service.logFoodByDescription(USER_ID, descriptionRequest());
+        service.logFood(USER_ID, null, descriptionRequest());
 
         verify(nutritionSyncService, never()).syncAfterFoodLogAsync(any(), any());
         TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
