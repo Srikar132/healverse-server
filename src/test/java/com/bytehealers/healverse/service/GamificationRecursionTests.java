@@ -80,7 +80,7 @@ class GamificationRecursionTests {
         when(streakRepository.findByUserId(USER_ID)).thenReturn(Optional.of(new UserStreaks()));
         when(dietPlanService.findExistingPlan(USER_ID, TODAY)).thenReturn(Optional.of(planWithBackReferences()));
         GamificationService service = new GamificationService(streakRepository,
-                dailyPointsRepository, historyRepository, dietPlanService, userTime);
+                dailyPointsRepository, historyRepository, dietPlanService, userTime, mock(GamificationRowCreator.class));
         FoodLog foodLog = foodLogWithBackReferences();
 
         assertDoesNotThrow(() -> service.recordFoodLog(USER_ID, foodLog));
