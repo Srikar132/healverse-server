@@ -8,6 +8,7 @@ import com.bytehealers.healverse.model.*;
 import com.bytehealers.healverse.repo.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -17,6 +18,7 @@ import java.math.BigDecimal;
 
 @RequiredArgsConstructor
 @Service
+@Transactional
 public class GamificationService {
 
     private final UserStreakRepository streakRepository;
@@ -91,8 +93,17 @@ public class GamificationService {
 
     // === DIET FOLLOWING ===
 
+    /**
+     * Awards points for a logged meal that follows today's plan, once per meal type per day.
+     * Runs in its own transaction: it is called after the food log committed, where a joined
+     * transaction would never be committed, and a failure here must not touch the food log.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void recordFoodLog(Long userId, FoodLog foodLog) {
         LocalDate today = userTime.today(userId);
+        if (isDietFollowRecorded(userId, today, foodLog.getMealType())) {
+            return;
+        }
 
         // Get today's diet plan for user
         DietPlan todaysPlan = dietPlanService.findExistingPlan(userId, today).orElse(null);
@@ -121,11 +132,22 @@ public class GamificationService {
 
         if (pointsEarned > 0) {
             awardPoints(userId, pointsEarned, PointReason.DIET_FOLLOW,
-                    "Followed " + foodLog.getMealType() + " plan (" + similarityScore + "% match)");
+                    dietFollowDescriptionPrefix(foodLog.getMealType()) + similarityScore + "% match)");
 
             // Check if all 3 meals logged and matched
             checkDailyDietCompletion(userId, today);
         }
+    }
+
+    private static String dietFollowDescriptionPrefix(MealType mealType) {
+        return "Followed " + mealType + " plan (";
+    }
+
+    private boolean isDietFollowRecorded(Long userId, LocalDate date, MealType mealType) {
+        String prefix = dietFollowDescriptionPrefix(mealType);
+        return historyRepository.findByUserIdAndDateBetween(userId, date, date).stream()
+                .anyMatch(ph -> PointReason.DIET_FOLLOW.name().equals(ph.getReason())
+                        && ph.getDescription() != null && ph.getDescription().startsWith(prefix));
     }
 
     private int calculateMealSimilarity(Meal suggestedMeal, FoodLog foodLog) {
@@ -194,7 +216,6 @@ public class GamificationService {
         return Math.min(todayDietPoints.size(), 3); // Max 3 meals per day
     }    // === HELPER METHODS ===
 
-    @Transactional
     private UserStreaks getOrCreateStreak(Long userId) {
         // Try to find existing first
         Optional<UserStreaks> existingStreak = streakRepository.findByUserId(userId);
@@ -221,7 +242,6 @@ public class GamificationService {
         }
     }
 
-    @Transactional
     private DailyPoints getOrCreateDailyPoints(Long userId, LocalDate date) {
         // Try to find existing first
         Optional<DailyPoints> existing = dailyPointsRepository.findByUserIdAndDate(userId, date);
@@ -263,7 +283,6 @@ public class GamificationService {
                 .orElse(null);
     }
 
-    @Transactional
     private void awardPoints(Long userId, int points, PointReason reason, String description) {
         LocalDate today = userTime.today(userId);
 
@@ -298,6 +317,7 @@ public class GamificationService {
         UserStreaks streak = getOrCreateStreak(userId);
         LocalDate today = userTime.today(userId);
         DailyPoints todayPoints = getDailyPoints(userId, today);
+        int todayTotal = todayPoints == null ? 0 : todayPoints.getTotalPoints();
         List<PointsHistory> recentHistory = historyRepository
                 .findByUserIdAndDateAfter(userId, today.minusDays(7));
 
@@ -306,7 +326,7 @@ public class GamificationService {
                 .totalPoints(streak.getTotalPoints())
                 .userId(streak.getUserId())
                 .currentStreak(streak.getCurrentLoginStreak())
-                .todayPoints(todayPoints.getTotalPoints())
+                .todayPoints(todayTotal)
                 .recentActivity(recentHistory)
                 .lastLogin(streak.getLastLoginDate())
                 .build();
