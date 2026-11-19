@@ -95,10 +95,11 @@ class GroqLiveSmokeTests {
     @Test
     void foodDescriptionIsAnalysedByTheTextModel() throws Exception {
         String auth = token();
-        JsonNode log = data(mockMvc.perform(post("/api/food-logs/log/description")
-                        .header("Authorization", auth)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"mealType\":\"BREAKFAST\",\"description\":\"two boiled eggs and a slice of toast\"}"))
+        JsonNode log = data(mockMvc.perform(multipart("/api/food-logs/log")
+                        .file(new MockMultipartFile("description", "", "text/plain",
+                                "two boiled eggs and a slice of toast".getBytes()))
+                        .file(new MockMultipartFile("mealType", "", "text/plain", "BREAKFAST".getBytes()))
+                        .header("Authorization", auth))
                 .andReturn());
 
         assertTrue(log.get("items").size() >= 1, "no food items parsed");
@@ -124,7 +125,7 @@ class GroqLiveSmokeTests {
         ByteArrayOutputStream png = new ByteArrayOutputStream();
         ImageIO.write(image, "png", png);
 
-        JsonNode log = data(mockMvc.perform(multipart("/api/food-logs/log/image")
+        JsonNode log = data(mockMvc.perform(multipart("/api/food-logs/log")
                         .file(new MockMultipartFile("image", "apple.png", "image/png", png.toByteArray()))
                         .file(new MockMultipartFile("mealType", "", "text/plain", "SNACK".getBytes()))
                         .header("Authorization", auth))

@@ -4,13 +4,17 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 @Entity
 @Table(name = "food_items")
 @Data
+@EqualsAndHashCode(exclude = {"foodLog"})
 @NoArgsConstructor
 @AllArgsConstructor
+@ToString(exclude = "foodLog")
 public class FoodItem {
 
     @Id

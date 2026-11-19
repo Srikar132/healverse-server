@@ -2,6 +2,7 @@ package com.bytehealers.healverse.controller;
 
 import com.bytehealers.healverse.dto.request.LogWaterRequest;
 import com.bytehealers.healverse.dto.request.QuickWaterLogRequest;
+import com.bytehealers.healverse.dto.request.UpdateWaterLogRequest;
 import com.bytehealers.healverse.dto.response.ApiResponse;
 import com.bytehealers.healverse.exception.ResourceNotFoundException;
 import com.bytehealers.healverse.model.WaterLog;
@@ -20,6 +21,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/water-logs")
+@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class WaterLoggingController {
 
@@ -74,6 +76,15 @@ public class WaterLoggingController {
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate, @CurrentUserId Long userId) {
         List<WaterLog> waterLogs = waterLoggingService.getWaterLogsByDateRange(userId ,  startDate, endDate);
         return ResponseEntity.ok(ApiResponse.success("Water logs retrieved successfully", waterLogs));
+    }
+
+    @PutMapping("/{waterLogId}")
+    public ResponseEntity<ApiResponse<WaterLog>> updateWaterLog(
+            @PathVariable Long waterLogId,
+            @Valid @RequestBody UpdateWaterLogRequest request,
+            @CurrentUserId Long userId) {
+        WaterLog updatedLog = waterLoggingService.updateWaterLog(waterLogId, request, userId);
+        return ResponseEntity.ok(ApiResponse.success("Water log updated successfully", updatedLog));
     }
 
     @DeleteMapping("/{waterLogId}")

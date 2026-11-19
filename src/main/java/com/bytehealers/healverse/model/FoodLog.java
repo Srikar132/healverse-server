@@ -4,6 +4,7 @@ import com.bytehealers.healverse.model.enums.MealType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
@@ -13,8 +14,10 @@ import java.util.List;
 @Entity
 @Table(name = "food_logs")
 @Data
+@EqualsAndHashCode(exclude = {"user", "items"})
 @NoArgsConstructor
 @AllArgsConstructor
+@ToString(exclude = {"user", "items"})
 public class FoodLog {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

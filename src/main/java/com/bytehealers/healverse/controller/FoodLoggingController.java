@@ -2,12 +2,14 @@ package com.bytehealers.healverse.controller;
 
 import com.bytehealers.healverse.model.enums.MealType;
 import com.bytehealers.healverse.dto.request.FoodLogRequest;
+import com.bytehealers.healverse.dto.request.UpdateFoodLogRequest;
 import com.bytehealers.healverse.dto.response.ApiResponse;
 import com.bytehealers.healverse.exception.BadRequestException;
 import com.bytehealers.healverse.dto.response.FoodLogResponse;
 import com.bytehealers.healverse.service.FoodLoggingService;
 import com.bytehealers.healverse.service.IdempotencyService;
 import com.bytehealers.healverse.security.CurrentUserId;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
@@ -32,34 +34,28 @@ public class FoodLoggingController {
     private final IdempotencyService idempotencyService;
 
 
-    @PostMapping("/log/description")
-    public ResponseEntity<ApiResponse<FoodLogResponse>> logFoodByDescription(
-            @RequestBody FoodLogRequest request,
-            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
-            @CurrentUserId Long userId) {
-        FoodLogResponse response = idempotencyService.execute(userId, idempotencyKey, FoodLogResponse.class,
-                () -> foodLoggingService.logFoodByDescription(userId, request));
-        return ResponseEntity.ok(ApiResponse.success("Food log created successfully", response));
-    }
-
     /**
-     * {@code loggedAt} is optional (ISO-8601). An offline client sends the time the meal was
-     * logged, so a queued photo is stored on the day it was taken, not the day it was uploaded.
+     * Send a photo ({@code image}), a text description ({@code description}), or both; at least one
+     * is required. {@code loggedAt} is optional (ISO-8601). An offline client sends the time the meal
+     * was logged, so a queued meal is stored on the day it was made, not the day it was uploaded.
+     * {@code /log/image} is the path older app versions still call.
      */
-    @PostMapping(value = "/log/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ApiResponse<FoodLogResponse>> logFoodByImage(
-            @RequestPart("image") MultipartFile image,
+    @PostMapping(value = {"/log", "/log/image"}, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<FoodLogResponse>> logFood(
+            @RequestPart(value = "image", required = false) MultipartFile image,
+            @RequestPart(value = "description", required = false) String description,
             @RequestPart("mealType") String mealType,
             @RequestPart(value = "loggedAt", required = false) String loggedAt,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             @CurrentUserId Long userId) {
         FoodLogRequest request = new FoodLogRequest();
         request.setMealType(parseMealType(mealType));
+        request.setDescription(description);
         request.setLoggedAt(parseLoggedAt(loggedAt));
 
         FoodLogResponse response = idempotencyService.execute(userId, idempotencyKey, FoodLogResponse.class,
-                () -> foodLoggingService.logFoodByImage(userId, image, request));
-        return ResponseEntity.ok(ApiResponse.success("Food log created from image successfully", response));
+                () -> foodLoggingService.logFood(userId, image, request));
+        return ResponseEntity.ok(ApiResponse.success("Food log created successfully", response));
     }
 
     @GetMapping("/date/{date}")
@@ -89,7 +85,7 @@ public class FoodLoggingController {
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<FoodLogResponse>> updateFoodLog(
             @PathVariable Long id,
-            @RequestBody FoodLogRequest request, @CurrentUserId Long userId) {
+            @Valid @RequestBody UpdateFoodLogRequest request, @CurrentUserId Long userId) {
         FoodLogResponse response = foodLoggingService.updateFoodLog(userId, id, request);
         return ResponseEntity.ok(ApiResponse.success("Food log updated successfully", response));
     }
