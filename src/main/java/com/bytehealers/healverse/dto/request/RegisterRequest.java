@@ -22,6 +22,10 @@ public class RegisterRequest {
     @Valid
     private UserProfileDTO profile;
 
+    // IANA zone id (e.g. "Asia/Kolkata"); UTC when omitted
+    @Size(max = 64, message = "Time zone cannot exceed 64 characters")
+    private String timeZone;
+
     @Data
     public static class Credentials {
 

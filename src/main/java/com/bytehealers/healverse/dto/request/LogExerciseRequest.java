@@ -24,13 +24,6 @@ public class LogExerciseRequest {
     // Constructors
     public LogExerciseRequest() {}
 
-    public LogExerciseRequest(String exerciseName, Integer durationMinutes, ExerciseIntensity intensity) {
-        this.exerciseName = exerciseName;
-        this.durationMinutes = durationMinutes;
-        this.intensity = intensity;
-        this.loggedAt = LocalDateTime.now();
-    }
-
     // Getters and Setters
     public String getExerciseName() { return exerciseName; }
     public void setExerciseName(String exerciseName) { this.exerciseName = exerciseName; }

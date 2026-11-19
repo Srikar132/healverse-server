@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 public class InsightsService {
 
     private final ChatClient chatClient;
+
     private final UserProfileRepository userProfileRepository;
     private final DailyNutritionSummaryRepository dailyNutritionSummaryRepository;
     private final FoodLogRepository foodLogRepository;
@@ -34,11 +35,13 @@ public class InsightsService {
     private final WaterLogRepository waterLogRepository;
     private final UserRepository userRepository;
 
+    private final UserTime userTime;
+
     @Transactional(readOnly = true)
     public InsightsResponse generateDailyInsights(Long userId) {
         try {
             // Get yesterday's date
-            LocalDate yesterday = LocalDate.now();
+            LocalDate yesterday = userTime.today(userId);
 
             // Collect all health data from yesterday
             DailyHealthData healthData = collectDailyHealthData(userId, yesterday);
@@ -111,8 +114,9 @@ public class InsightsService {
     }
 
     private void calculateFromLogs(Long userId, LocalDate date, DailyHealthData data) {
-        LocalDateTime startOfDay = date.atStartOfDay();
-        LocalDateTime endOfDay = date.atTime(23, 59, 59);
+        UserTime.DayRange day = userTime.dayRange(userId, date);
+        LocalDateTime startOfDay = day.start();
+        LocalDateTime endOfDay = day.endInclusive();
 
         // Calculate water consumption
         List<WaterLog> waterLogs = waterLogRepository
@@ -135,8 +139,9 @@ public class InsightsService {
     }
 
     private void collectExerciseData(Long userId, LocalDate date, DailyHealthData data) {
-        LocalDateTime startOfDay = date.atStartOfDay();
-        LocalDateTime endOfDay = date.atTime(23, 59, 59);
+        UserTime.DayRange day = userTime.dayRange(userId, date);
+        LocalDateTime startOfDay = day.start();
+        LocalDateTime endOfDay = day.endInclusive();
 
         List<ExerciseLog> exercises = exerciseLogRepository
                 .findByUserIdAndLoggedAtBetween(userId, startOfDay, endOfDay);
@@ -159,8 +164,9 @@ public class InsightsService {
     }
 
     private void collectFoodVarietyData(Long userId, LocalDate date, DailyHealthData data) {
-        LocalDateTime startOfDay = date.atStartOfDay();
-        LocalDateTime endOfDay = date.atTime(23, 59, 59);
+        UserTime.DayRange day = userTime.dayRange(userId, date);
+        LocalDateTime startOfDay = day.start();
+        LocalDateTime endOfDay = day.endInclusive();
 
         List<FoodLog> foodLogs = foodLogRepository
                 .findFoodLogsByUserIdAndDateRange(userId, startOfDay, endOfDay);

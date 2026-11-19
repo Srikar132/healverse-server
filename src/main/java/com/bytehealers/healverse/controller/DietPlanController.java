@@ -5,6 +5,7 @@ import com.bytehealers.healverse.dto.response.ApiResponse;
 import com.bytehealers.healverse.model.DietPlan;
 import com.bytehealers.healverse.model.Meal;
 import com.bytehealers.healverse.service.DietPlanService;
+import com.bytehealers.healverse.service.UserTime;
 import com.bytehealers.healverse.security.CurrentUserId;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -24,6 +25,9 @@ import java.util.Map;
 public class DietPlanController {
 
     private final DietPlanService dietPlanService;
+
+    private final UserTime userTime;
+
 
 
     @GetMapping("/weekly/{date}")
@@ -94,7 +98,7 @@ public class DietPlanController {
 
     @GetMapping("/summary")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getDietPlanSummary(@CurrentUserId Long userId) {
-        LocalDate now = LocalDate.now();
+        LocalDate now = userTime.today(userId);
         LocalDate startOfMonth = now.withDayOfMonth(1);
         LocalDate endOfMonth = now.withDayOfMonth(now.lengthOfMonth());
         List<DietPlan> monthlyPlans = dietPlanService.getDietPlansByDateRange(userId, startOfMonth, endOfMonth);

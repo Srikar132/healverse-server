@@ -16,11 +16,6 @@ public class LogWaterRequest {
     // Constructors
     public LogWaterRequest() {}
 
-    public LogWaterRequest(BigDecimal amountMl) {
-        this.amountMl = amountMl;
-        this.loggedAt = LocalDateTime.now();
-    }
-
     // Getters and Setters
     public BigDecimal getAmountMl() { return amountMl; }
     public void setAmountMl(BigDecimal amountMl) { this.amountMl = amountMl; }

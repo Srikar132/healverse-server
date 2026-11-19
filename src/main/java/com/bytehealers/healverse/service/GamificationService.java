@@ -27,10 +27,12 @@ public class GamificationService {
 
     private final DietPlanService dietPlanService;
 
+    private final UserTime userTime;
+
     // === LOGIN STREAK ===
 
     public void recordDailyLogin(Long userId) {
-        LocalDate today = LocalDate.now();
+        LocalDate today = userTime.today(userId);
         UserStreaks streak = getOrCreateStreak(userId);
 
         // Check if already logged in today
@@ -90,7 +92,7 @@ public class GamificationService {
     // === DIET FOLLOWING ===
 
     public void recordFoodLog(Long userId, FoodLog foodLog) {
-        LocalDate today = LocalDate.now();
+        LocalDate today = userTime.today(userId);
 
         // Get today's diet plan for user
         DietPlan todaysPlan = dietPlanService.findExistingPlan(userId, today).orElse(null);
@@ -263,7 +265,7 @@ public class GamificationService {
 
     @Transactional
     private void awardPoints(Long userId, int points, PointReason reason, String description) {
-        LocalDate today = LocalDate.now();
+        LocalDate today = userTime.today(userId);
 
         // Update daily points
         DailyPoints dailyPoints = getOrCreateDailyPoints(userId, today);
@@ -294,7 +296,7 @@ public class GamificationService {
 
     public GamificationSummaryDTO getUserSummary(Long userId) {
         UserStreaks streak = getOrCreateStreak(userId);
-        LocalDate today = LocalDate.now();
+        LocalDate today = userTime.today(userId);
         DailyPoints todayPoints = getDailyPoints(userId, today);
         List<PointsHistory> recentHistory = historyRepository
                 .findByUserIdAndDateAfter(userId, today.minusDays(7));
@@ -313,11 +315,11 @@ public class GamificationService {
     // === ADDITIONAL PUBLIC METHODS ===
 
     public DailyPoints getTodayPoints(Long userId) {
-        return getDailyPoints(userId, LocalDate.now());
+        return getDailyPoints(userId, userTime.today(userId));
     }
 
     public List<PointsHistory> getUserPointsHistory(Long userId, int days) {
-        LocalDate fromDate = LocalDate.now().minusDays(days);
+        LocalDate fromDate = userTime.today(userId).minusDays(days);
         return historyRepository.findByUserIdAndDateAfter(userId, fromDate);
     }
 

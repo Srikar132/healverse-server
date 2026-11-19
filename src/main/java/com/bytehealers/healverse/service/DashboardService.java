@@ -35,14 +35,14 @@ public class DashboardService {
 
     private final UserService userService;
 
-    public DashboardResponse getTodaysDashboard(Long userId) {
-        LocalDate today = LocalDate.now();
+    private final UserTime userTime;
 
-       return getDashboard(userId, today);
+    public DashboardResponse getTodaysDashboard(Long userId) {
+        return getDashboard(userId, userTime.today(userId));
     }
 
     public List<DailyNutritionSummary> getWeeklySummary(Long userId) {
-        LocalDate endDate = LocalDate.now();
+        LocalDate endDate = userTime.today(userId);
         LocalDate startDate = endDate.minusDays(6);
 
         // Sync each day in the range to ensure fresh data
@@ -99,8 +99,9 @@ public class DashboardService {
                 dailyNutritionSummaryRepository.findByUserIdAndDate(userId, date);
 
 
-        if (summary_.isEmpty() && date.isBefore(LocalDate.now())) {
-            log.warn("Cannot generate nutrition summary for past date: {} (today is {})", date, LocalDate.now());
+        LocalDate today = userTime.today(userId);
+        if (summary_.isEmpty() && date.isBefore(today)) {
+            log.warn("Cannot generate nutrition summary for past date: {} (today is {})", date, today);
             return null;
         }
 

@@ -43,6 +43,8 @@ public class DietPlanService {
 
     private final ConcurrentMap<PlanKey, CompletableFuture<DietPlan>> inFlight = new ConcurrentHashMap<>();
 
+    private final UserTime userTime;
+
     /**
      * Generate nutritional adjustment context based on historical data
      */
@@ -287,7 +289,7 @@ public class DietPlanService {
      * Get user's current diet plan (today's plan)
      */
     public DietPlan getCurrentDietPlan(Long userId) {
-        return getDailyPlan(userId, LocalDate.now());
+        return getDailyPlan(userId, userTime.today(userId));
     }
 
     /**

@@ -38,6 +38,10 @@ public class User {
     @Column(unique = true)
     private String email;
 
+    // IANA id of the zone that decides where this user's day starts and ends
+    @Column(name = "time_zone", nullable = false, length = 64)
+    private String timeZone = "UTC";
+
     // Google ID to bind with Google account (optional)
     @Column(unique = true)
     private String googleId;

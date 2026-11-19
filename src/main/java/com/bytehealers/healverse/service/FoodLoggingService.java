@@ -21,9 +21,9 @@ import org.springframework.util.MimeTypeUtils;
 import java.util.Optional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -34,7 +34,6 @@ import java.util.stream.Collectors;
 public class FoodLoggingService {
 
     // log factory
-
 
     private final FoodLogRepository foodLogRepository;
 
@@ -47,6 +46,10 @@ public class FoodLoggingService {
     private final ObjectMapper objectMapper;
 
     private final GamificationService gamificationService;
+
+    private final Clock clock;
+
+    private final UserTime userTime;
 
     @Value("${app.ai.vision-model}")
     private String visionModel;
@@ -188,8 +191,8 @@ public class FoodLoggingService {
         foodLog.setMealName(aiFoodResponse.getMealName());
         foodLog.setImageUrl(imageUrl);
         foodLog.setImageDescription(imageDescription);
-        foodLog.setLoggedAt(request.getLoggedAt() != null ? request.getLoggedAt() : LocalDateTime.now());
-        foodLog.setCreatedAt(LocalDateTime.now());
+        foodLog.setLoggedAt(request.getLoggedAt() != null ? request.getLoggedAt() : LocalDateTime.now(clock));
+        foodLog.setCreatedAt(LocalDateTime.now(clock));
         foodLog.setIsFromCamera(isFromCamera);
 
         List<FoodItem> foodItems = aiFoodResponse.getItems().stream()
@@ -214,8 +217,9 @@ public class FoodLoggingService {
     }
 
     public List<FoodLogResponse> getTodaysFoodLogs(Long userId) {
-        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
-        LocalDateTime endOfDay = startOfDay.plusDays(1);
+        UserTime.DayRange day = userTime.dayRange(userId, userTime.today(userId));
+        LocalDateTime startOfDay = day.start();
+        LocalDateTime endOfDay = day.endExclusive();
         List<FoodLog> foodLogs = foodLogRepository.findTodaysFoodLogsByUserId(userId, startOfDay, endOfDay);
         return foodLogs.stream()
                 .map(this::convertToResponse)
@@ -223,8 +227,9 @@ public class FoodLoggingService {
     }
 
     public List<FoodLogResponse> getFoodLogsByDate(Long userId , LocalDate date) {
-        LocalDateTime startOfDay = date.atStartOfDay();
-        LocalDateTime endOfDay = startOfDay.plusDays(1);
+        UserTime.DayRange day = userTime.dayRange(userId, date);
+        LocalDateTime startOfDay = day.start();
+        LocalDateTime endOfDay = day.endExclusive();
         List<FoodLog> foodLogs = foodLogRepository.findTodaysFoodLogsByUserId(userId, startOfDay, endOfDay);
         return foodLogs.stream()
                 .map(this::convertToResponse)
@@ -319,8 +324,9 @@ public class FoodLoggingService {
     }
 
     public List<FoodLog> getFoodLogsByDateRange(Long userId, LocalDate fromDate, LocalDate toDate) {
-        LocalDateTime startOfDay = fromDate.atStartOfDay(); // 2025-08-07T00:00:00
-        LocalDateTime endOfDay = toDate.atTime(LocalTime.MAX); // 2025-08-07T23:59:59.999999999
+        UserTime.DayRange range = userTime.range(userId, fromDate, toDate);
+        LocalDateTime startOfDay = range.start();
+        LocalDateTime endOfDay = range.endInclusive();
 
         return foodLogRepository.findFoodLogsByUserIdAndDateRange(userId, startOfDay, endOfDay);
     }

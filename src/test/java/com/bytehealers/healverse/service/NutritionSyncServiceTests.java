@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -61,7 +62,7 @@ class NutritionSyncServiceTests {
         when(waterRepository.findByUserIdAndLoggedAtBetween(anyLong(), any(), any())).thenReturn(List.of());
 
         service = new NutritionSyncService(summaryRepository, exerciseRepository, waterRepository,
-                userRepository, foodRepository, dietPlanService, calculator);
+                userRepository, foodRepository, dietPlanService, calculator, Clock.systemUTC(), new UserTime(Clock.systemUTC(), mock(UserRepository.class)));
     }
 
     private DailyNutritionSummary savedSummary() {

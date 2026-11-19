@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -30,9 +31,14 @@ import java.util.stream.Collectors;
 public class AIRecommendationService {
 
     private final ChatClient chatClient;
+
     private final NutritionCalculatorService nutritionCalculator;
     private final ObjectMapper objectMapper;
     private final DailyNutritionSummaryRepository dailyNutritionSummaryRepository;
+
+    private final Clock clock;
+
+    private final UserTime userTime;
 
     @Value("classpath:/prompts/diet-plan-template.txt")
     private Resource dietPlanPromptTemplate;
@@ -371,9 +377,9 @@ public class AIRecommendationService {
                                             NutritionAnalysis analysis) {
         DietPlan dietPlan = new DietPlan();
         dietPlan.setUser(user);
-        dietPlan.setPlanDate(LocalDate.now());
+        dietPlan.setPlanDate(userTime.today(user.getId()));
         dietPlan.setIsGenerated(true);
-        dietPlan.setCreatedAt(LocalDateTime.now());
+        dietPlan.setCreatedAt(LocalDateTime.now(clock));
 
         // Set meals with relationship
         meals.forEach(meal -> meal.setDietPlan(dietPlan));
@@ -465,7 +471,7 @@ public class AIRecommendationService {
         vars.put("fat", macros.getFat());
 
         vars.put("mealTypes", List.of("BREAKFAST", "LUNCH", "DINNER"));
-        vars.put("currentDate", LocalDate.now().toString());
+        vars.put("currentDate", userTime.today(profile.getUser().getId()).toString());
 
         return vars;
     }
@@ -628,9 +634,9 @@ public class AIRecommendationService {
                                     NutritionCalculatorService.MacroDistribution macros) {
         DietPlan dietPlan = new DietPlan();
         dietPlan.setUser(user);
-        dietPlan.setPlanDate(LocalDate.now());
+        dietPlan.setPlanDate(userTime.today(user.getId()));
         dietPlan.setIsGenerated(true);
-        dietPlan.setCreatedAt(LocalDateTime.now());
+        dietPlan.setCreatedAt(LocalDateTime.now(clock));
 
         meals.forEach(meal -> meal.setDietPlan(dietPlan));
         dietPlan.setMeals(meals);
@@ -728,7 +734,7 @@ public class AIRecommendationService {
     private String buildNutritionalContext(Long userId) {
         try {
             // Get last 7 days of nutrition data
-            LocalDate endDate = LocalDate.now().minusDays(1);
+            LocalDate endDate = userTime.today(userId).minusDays(1);
             LocalDate startDate = endDate.minusDays(6);
 
             List<DailyNutritionSummary> recentNutrition = dailyNutritionSummaryRepository
