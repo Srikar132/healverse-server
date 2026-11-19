@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -132,7 +133,7 @@ class OpenInViewOffFlowTests {
 
         DietPlan plan = new DietPlan();
         plan.setUser(userRepository.findById(owner.id()).orElseThrow());
-        plan.setPlanDate(LocalDate.now());
+        plan.setPlanDate(LocalDate.now(ZoneOffset.UTC));
         plan.setTotalCalories(new BigDecimal("500"));
         plan.setTotalProtein(new BigDecimal("30"));
         plan.setTotalCarbs(new BigDecimal("60"));
@@ -150,7 +151,7 @@ class OpenInViewOffFlowTests {
         meal.setIngredients(List.of("oats", "milk"));
         mealRepository.save(meal);
 
-        String today = LocalDate.now().toString();
+        String today = LocalDate.now(ZoneOffset.UTC).toString();
         mockMvc.perform(get("/api/diet-plans/daily/" + today).header("Authorization", owner.bearer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.meals.length()").value(1))
