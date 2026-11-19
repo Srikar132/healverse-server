@@ -3,6 +3,7 @@ package com.bytehealers.healverse.service;
 import com.bytehealers.healverse.exception.*;
 import com.bytehealers.healverse.dto.request.LogWaterRequest;
 import com.bytehealers.healverse.dto.request.QuickWaterLogRequest;
+import com.bytehealers.healverse.dto.request.UpdateWaterLogRequest;
 import com.bytehealers.healverse.model.User;
 import com.bytehealers.healverse.model.WaterLog;
 import com.bytehealers.healverse.repo.UserRepository;
@@ -100,6 +101,20 @@ public class WaterLoggingService {
     public List<WaterLog> getWaterLogsByDateRange(Long userId, LocalDate startDate, LocalDate endDate) {
         UserTime.DayRange range = userTime.range(userId, startDate, endDate);
         return waterLogRepository.findByUserIdAndLoggedAtBetween(userId, range.start(), range.endInclusive());
+    }
+
+    public WaterLog updateWaterLog(Long waterLogId, UpdateWaterLogRequest request, Long userId) {
+        // Owner-scoped lookup: another user's log is indistinguishable from a missing one
+        WaterLog waterLog = waterLogRepository.findByIdAndUser_Id(waterLogId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Water log not found"));
+
+        waterLog.setAmountMl(request.getAmountMl());
+
+        WaterLog savedLog = waterLogRepository.save(waterLog);
+
+        syncNutritionSummary(userId, savedLog.getLoggedAt());
+
+        return savedLog;
     }
 
     public boolean deleteWaterLog(Long waterLogId, Long userId) {
