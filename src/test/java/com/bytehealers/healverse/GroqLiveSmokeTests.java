@@ -20,6 +20,7 @@ import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.UUID;
 
@@ -79,7 +80,7 @@ class GroqLiveSmokeTests {
     @Test
     void dietPlanIsGeneratedAndParsedFromTheTextModel() throws Exception {
         String auth = token();
-        JsonNode plan = data(mockMvc.perform(post("/api/diet-plans/generate/" + LocalDate.now())
+        JsonNode plan = data(mockMvc.perform(post("/api/diet-plans/generate/" + LocalDate.now(ZoneOffset.UTC))
                 .header("Authorization", auth)).andReturn());
 
         JsonNode meals = plan.get("meals");

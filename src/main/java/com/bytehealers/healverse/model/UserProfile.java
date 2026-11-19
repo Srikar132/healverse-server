@@ -10,6 +10,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
@@ -19,6 +20,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "user_profiles")
 @Data
+@EqualsAndHashCode(exclude = {"user"})
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString(exclude = "user")
