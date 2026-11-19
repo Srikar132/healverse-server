@@ -154,6 +154,18 @@ class ErrorHandlingTests {
     }
 
     @Test
+    void mealWithNeitherPhotoNorDescriptionIs400BeforeAnyAiCall() throws Exception {
+        Map<String, Object> user = registerUser();
+
+        assertErrorEnvelope(
+                mockMvc.perform(multipart("/api/food-logs/log")
+                        .file(new MockMultipartFile("mealType", "", "text/plain", "LUNCH".getBytes()))
+                        .header("Authorization", bearer(user))),
+                400, "Send a photo, a description of the meal, or both.");
+    }
+
+
+    @Test
     void cannotRegenerateAnotherUsersDietPlan() throws Exception {
         Map<String, Object> owner = registerUser();
         Map<String, Object> intruder = registerUser();
