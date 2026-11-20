@@ -4,13 +4,17 @@ import com.bytehealers.healverse.dto.response.ApiResponse;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.QueryTimeoutException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.InternalAuthenticationServiceException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.transaction.CannotCreateTransactionException;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -27,6 +31,8 @@ import java.util.stream.Collectors;
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    public static final String SERVICE_UNAVAILABLE_MESSAGE = "Service temporarily unavailable. Please try again shortly.";
 
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
@@ -70,6 +76,14 @@ public class GlobalExceptionHandler {
         return respond(HttpStatus.CONFLICT, "Request conflicts with existing data");
     }
 
+    // The database cannot be reached or is too slow: tell the client to retry rather than report a server bug
+    @ExceptionHandler({DataAccessResourceFailureException.class, CannotCreateTransactionException.class,
+            QueryTimeoutException.class})
+    public ResponseEntity<ApiResponse<Void>> handleDatabaseUnavailable(Exception ex) {
+        logger.error("Database unavailable", ex);
+        return respond(HttpStatus.SERVICE_UNAVAILABLE, SERVICE_UNAVAILABLE_MESSAGE);
+    }
+
     // ---- Malformed or invalid requests ----
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -108,6 +122,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ApiResponse<Void>> handleBadCredentials(BadCredentialsException ex) {
         return respond(HttpStatus.UNAUTHORIZED, "Invalid credentials");
+    }
+
+    // Spring wraps any failure while loading the user (e.g. the database being down) in this type. It is not
+    // the caller's fault, so it must not look like a bad login.
+    @ExceptionHandler(InternalAuthenticationServiceException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAuthenticationBackendFailure(InternalAuthenticationServiceException ex) {
+        logger.error("Authentication backend failure", ex);
+        return respond(HttpStatus.SERVICE_UNAVAILABLE, SERVICE_UNAVAILABLE_MESSAGE);
     }
 
     @ExceptionHandler(AuthenticationException.class)

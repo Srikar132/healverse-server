@@ -1,13 +1,20 @@
 # Production compose file. The deploy workflow copies it to /opt/healverse/docker-compose.yml on the server and
 # runs it through deploy/deploy.sh, which sets IMAGE and TAG. Secrets come from /opt/healverse/.env on the server.
+#
+# The database runs next to the API. DB_USERNAME and DB_PASSWORD in .env are used both to create the Postgres
+# role and by the API to connect; the API's DB_URL is fixed below, so DB_URL in .env is ignored.
 services:
   api:
     image: ${IMAGE:?IMAGE is not set}:${TAG:?TAG is not set}
     env_file: .env
     environment:
       SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:postgresql://db:5432/healverse
     ports:
       - "80:8080"
+    depends_on:
+      db:
+        condition: service_healthy
     restart: unless-stopped
     stop_grace_period: 40s   # let in-flight AI requests finish (server.shutdown=graceful, 30s)
     logging:
@@ -15,3 +22,28 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: healverse
+      POSTGRES_USER: ${DB_USERNAME:?DB_USERNAME is not set}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is not set}
+    # Small limits: this shares a 2 GB instance with the API. Not published on any host port.
+    command: ["postgres", "-c", "shared_buffers=64MB", "-c", "max_connections=30"]
+    volumes:
+      - healverse-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d healverse"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  healverse-db:
